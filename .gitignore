@@ -1,0 +1,64 @@
+## Ignore Visual Studio temporary files, build results
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+
+# User-specific files
+*.user
+*.suo
+*.cache
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.mdf
+*.ldf
+
+# Secrets and Sensitive Data
+appsettings.local.json
+**/appsettings.*.local.json
+*.env
+.env
+.env.local
+secrets.json
+
+# Docker
+docker-compose.override.yml
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml

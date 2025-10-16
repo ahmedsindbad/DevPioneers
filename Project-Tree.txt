@@ -1,0 +1,223 @@
+DevPioneers/
+│
+├── src/
+│   │
+│   ├── DevPioneers.Api/
+│   │   ├── Controllers/
+│   │   │   ├── AuthController.cs
+│   │   │   ├── SubscriptionController.cs
+│   │   │   ├── PaymentController.cs
+│   │   │   ├── WalletController.cs
+│   │   │   └── WebhookController.cs
+│   │   ├── Middleware/
+│   │   │   ├── JwtMiddleware.cs
+│   │   │   ├── ExceptionHandlingMiddleware.cs
+│   │   │   ├── AuditMiddleware.cs
+│   │   │   └── RateLimitingMiddleware.cs
+│   │   ├── Filters/
+│   │   │   ├── ValidateModelAttribute.cs
+│   │   │   └── AuthorizeRolesAttribute.cs
+│   │   ├── Extensions/
+│   │   │   ├── ServiceCollectionExtensions.cs
+│   │   │   └── ApplicationBuilderExtensions.cs
+│   │   ├── Properties/
+│   │   │   └── launchSettings.json
+│   │   ├── appsettings.json
+│   │   ├── appsettings.Development.json
+│   │   ├── appsettings.Production.json
+│   │   ├── Program.cs
+│   │   └── DevPioneers.Api.csproj
+│   │
+│   ├── DevPioneers.Application/
+│   │   ├── Common/
+│   │   │   ├── Interfaces/
+│   │   │   │   ├── IApplicationDbContext.cs
+│   │   │   │   ├── ICurrentUserService.cs
+│   │   │   │   ├── IDateTime.cs
+│   │   │   │   └── ICacheService.cs
+│   │   │   ├── Models/
+│   │   │   │   ├── Result.cs
+│   │   │   │   ├── PaginatedList.cs
+│   │   │   │   └── ApiResponse.cs
+│   │   │   ├── Behaviors/
+│   │   │   │   ├── ValidationBehavior.cs
+│   │   │   │   ├── LoggingBehavior.cs
+│   │   │   │   └── PerformanceBehavior.cs
+│   │   │   └── Exceptions/
+│   │   │       ├── ValidationException.cs
+│   │   │       ├── NotFoundException.cs
+│   │   │       └── UnauthorizedException.cs
+│   │   ├── Features/
+│   │   │   ├── Auth/
+│   │   │   │   ├── Commands/
+│   │   │   │   │   ├── LoginCommand.cs
+│   │   │   │   │   ├── RegisterCommand.cs
+│   │   │   │   │   ├── RefreshTokenCommand.cs
+│   │   │   │   │   ├── RevokeTokenCommand.cs
+│   │   │   │   │   └── VerifyOtpCommand.cs
+│   │   │   │   ├── Queries/
+│   │   │   │   │   └── GetUserProfileQuery.cs
+│   │   │   │   └── DTOs/
+│   │   │   │       ├── LoginDto.cs
+│   │   │   │       ├── RegisterDto.cs
+│   │   │   │       └── AuthResponseDto.cs
+│   │   │   ├── Subscriptions/
+│   │   │   │   ├── Commands/
+│   │   │   │   │   ├── CreateSubscriptionCommand.cs
+│   │   │   │   │   ├── CancelSubscriptionCommand.cs
+│   │   │   │   │   └── RenewSubscriptionCommand.cs
+│   │   │   │   ├── Queries/
+│   │   │   │   │   ├── GetActiveSubscriptionQuery.cs
+│   │   │   │   │   └── GetSubscriptionPlansQuery.cs
+│   │   │   │   └── DTOs/
+│   │   │   │       ├── SubscriptionDto.cs
+│   │   │   │       └── SubscriptionPlanDto.cs
+│   │   │   ├── Payments/
+│   │   │   │   ├── Commands/
+│   │   │   │   │   ├── CreatePaymobOrderCommand.cs
+│   │   │   │   │   ├── VerifyPaymobCallbackCommand.cs
+│   │   │   │   │   └── ProcessRefundCommand.cs
+│   │   │   │   ├── Queries/
+│   │   │   │   │   └── GetPaymentHistoryQuery.cs
+│   │   │   │   └── DTOs/
+│   │   │   │       ├── PaymentDto.cs
+│   │   │   │       └── PaymobOrderDto.cs
+│   │   │   └── Wallet/
+│   │   │       ├── Commands/
+│   │   │       │   ├── CreditWalletCommand.cs
+│   │   │       │   ├── DebitWalletCommand.cs
+│   │   │       │   └── TransferPointsCommand.cs
+│   │   │       ├── Queries/
+│   │   │       │   ├── GetWalletBalanceQuery.cs
+│   │   │       │   └── GetTransactionHistoryQuery.cs
+│   │   │       └── DTOs/
+│   │   │           ├── WalletDto.cs
+│   │   │           └── TransactionDto.cs
+│   │   ├── DependencyInjection.cs
+│   │   └── DevPioneers.Application.csproj
+│   │
+│   ├── DevPioneers.Domain/
+│   │   ├── Entities/
+│   │   │   ├── User.cs
+│   │   │   ├── Role.cs
+│   │   │   ├── UserRole.cs
+│   │   │   ├── SubscriptionPlan.cs
+│   │   │   ├── UserSubscription.cs
+│   │   │   ├── Wallet.cs
+│   │   │   ├── WalletTransaction.cs
+│   │   │   ├── Payment.cs
+│   │   │   ├── AuditTrail.cs
+│   │   │   └── RefreshToken.cs
+│   │   ├── Enums/
+│   │   │   ├── PaymentStatus.cs
+│   │   │   ├── SubscriptionStatus.cs
+│   │   │   ├── TransactionType.cs
+│   │   │   ├── UserStatus.cs
+│   │   │   └── BillingCycle.cs
+│   │   ├── ValueObjects/
+│   │   │   ├── Money.cs
+│   │   │   └── Points.cs
+│   │   ├── Common/
+│   │   │   ├── BaseEntity.cs
+│   │   │   └── IAuditableEntity.cs
+│   │   └── DevPioneers.Domain.csproj
+│   │
+│   ├── DevPioneers.Infrastructure/
+│   │   ├── Services/
+│   │   │   ├── Auth/
+│   │   │   │   ├── JwtTokenService.cs
+│   │   │   │   ├── RefreshTokenService.cs
+│   │   │   │   ├── OtpService.cs
+│   │   │   │   └── TwoFactorAuthService.cs
+│   │   │   ├── Payment/
+│   │   │   │   ├── PaymobService.cs
+│   │   │   │   └── PaymentSignatureService.cs
+│   │   │   ├── Cache/
+│   │   │   │   ├── RedisCacheService.cs
+│   │   │   │   └── CacheKeyGenerator.cs
+│   │   │   ├── Email/
+│   │   │   │   ├── EmailService.cs
+│   │   │   │   └── EmailTemplateService.cs
+│   │   │   ├── CurrentUserService.cs
+│   │   │   └── DateTimeService.cs
+│   │   ├── Jobs/
+│   │   │   ├── ExpireSubscriptionsJob.cs
+│   │   │   ├── ReconcilePaymentsJob.cs
+│   │   │   ├── SendEmailJob.cs
+│   │   │   └── CleanOldAuditTrailJob.cs
+│   │   ├── Configurations/
+│   │   │   ├── JwtSettings.cs
+│   │   │   ├── PaymobSettings.cs
+│   │   │   ├── RedisSettings.cs
+│   │   │   └── EmailSettings.cs
+│   │   ├── DependencyInjection.cs
+│   │   └── DevPioneers.Infrastructure.csproj
+│   │
+│   └── DevPioneers.Persistence/
+│       ├── Contexts/
+│       │   └── ApplicationDbContext.cs
+│       ├── Configurations/
+│       │   ├── UserConfiguration.cs
+│       │   ├── RoleConfiguration.cs
+│       │   ├── SubscriptionPlanConfiguration.cs
+│       │   ├── UserSubscriptionConfiguration.cs
+│       │   ├── WalletConfiguration.cs
+│       │   ├── WalletTransactionConfiguration.cs
+│       │   ├── PaymentConfiguration.cs
+│       │   ├── AuditTrailConfiguration.cs
+│       │   └── RefreshTokenConfiguration.cs
+│       ├── Interceptors/
+│       │   └── AuditInterceptor.cs
+│       ├── Migrations/
+│       │   └── (Generated migrations)
+│       ├── Seeds/
+│       │   ├── RoleSeed.cs
+│       │   └── SubscriptionPlanSeed.cs
+│       ├── DependencyInjection.cs
+│       └── DevPioneers.Persistence.csproj
+│
+├── tests/
+│   ├── DevPioneers.Tests.Unit/
+│   │   ├── Application/
+│   │   │   ├── Auth/
+│   │   │   ├── Subscriptions/
+│   │   │   └── Payments/
+│   │   └── DevPioneers.Tests.Unit.csproj
+│   │
+│   └── DevPioneers.Tests.Integration/
+│       ├── Controllers/
+│       ├── Infrastructure/
+│       ├── CustomWebApplicationFactory.cs
+│       └── DevPioneers.Tests.Integration.csproj
+│
+├── .github/
+│   └── workflows/
+│       └── build-test-deploy.yml
+│
+├── scripts/
+│   ├── db/
+│   │   ├── 001_CreateTables.sql
+│   │   ├── 002_CreateIndexes.sql
+│   │   └── 003_SeedData.sql
+│   └── docker/
+│       └── init-db.sh
+│
+├── docs/
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   └── ERD.md
+│
+├── postman/
+│   └── DevPioneers-API.postman_collection.json
+│
+├── .dockerignore
+├── .editorconfig
+├── .gitignore
+├── Directory.Build.props
+├── docker-compose.yml
+├── docker-compose.override.yml
+├── Dockerfile
+├── README.md
+├── LICENSE
+└── DevPioneers.sln

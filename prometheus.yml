@@ -1,0 +1,53 @@
+# Prometheus Configuration for DevPioneers API
+
+global:
+  scrape_interval: 15s # Default scrape interval
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  external_labels:
+    monitor: 'devpioneers-monitor'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - 'alertmanager:9093'
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # DevPioneers API metrics
+  - job_name: 'devpioneers-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:8080']
+        labels:
+          service: 'api'
+          environment: 'development'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # SQL Server metrics (if exporter is available)
+  - job_name: 'sqlserver'
+    static_configs:
+      - targets: ['sqlserver-exporter:9399']
+        labels:
+          service: 'sqlserver'
+    # Uncomment when SQL Server exporter is added
+
+  # Redis metrics (if exporter is available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+    # Uncomment when Redis exporter is added
