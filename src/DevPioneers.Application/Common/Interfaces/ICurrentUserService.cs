@@ -4,12 +4,12 @@
 namespace DevPioneers.Application.Common.Interfaces;
 
 /// <summary>
-/// Service to get current authenticated user information
+/// Service for accessing current user context information
 /// </summary>
 public interface ICurrentUserService
 {
     /// <summary>
-    /// Current user ID (from JWT claims)
+    /// Current user ID (null if not authenticated)
     /// </summary>
     int? UserId { get; }
 
@@ -21,30 +21,40 @@ public interface ICurrentUserService
     /// <summary>
     /// Current user email
     /// </summary>
-    string? Email { get; }
+    string? UserEmail { get; }
 
     /// <summary>
     /// Current user roles
     /// </summary>
-    IEnumerable<string> Roles { get; }
+    IEnumerable<string> UserRoles { get; }
 
     /// <summary>
-    /// Is user authenticated
+    /// Check if user is in specific role
+    /// </summary>
+    bool IsInRole(string role);
+
+    /// <summary>
+    /// Check if user is authenticated
     /// </summary>
     bool IsAuthenticated { get; }
 
     /// <summary>
-    /// IP Address of current request
+    /// IP address of current request
     /// </summary>
     string? IpAddress { get; }
 
     /// <summary>
-    /// User Agent of current request
+    /// User agent of current request
     /// </summary>
     string? UserAgent { get; }
 
     /// <summary>
-    /// Check if user has a specific role
+    /// Request path
     /// </summary>
-    bool IsInRole(string role);
+    string? RequestPath { get; }
+
+    /// <summary>
+    /// HTTP method
+    /// </summary>
+    string? HttpMethod { get; }
 }

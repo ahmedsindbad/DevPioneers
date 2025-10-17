@@ -1,5 +1,5 @@
 // ============================================
-// File: DevPioneers.Application/Features/Auth/Commands/LoginCommand.cs
+// File: DevPioneers.Application/Features/Auth/Commands/RegisterCommand.cs
 // ============================================
 using DevPioneers.Application.Common.Models;
 using DevPioneers.Application.Features.Auth.DTOs;
@@ -7,10 +7,11 @@ using MediatR;
 
 namespace DevPioneers.Application.Features.Auth.Commands;
 
-public record LoginCommand(
-    string EmailOrMobile,
+public record RegisterCommand(
+    string FullName,
+    string Email,
+    string? Mobile,
     string Password,
-    bool RememberMe = false,
     string? IpAddress = null,
     string? UserAgent = null
 ) : IRequest<Result<AuthResponseDto>>;
