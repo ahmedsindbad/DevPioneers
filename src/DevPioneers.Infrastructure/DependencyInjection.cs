@@ -3,6 +3,7 @@
 // ============================================
 using DevPioneers.Application.Common.Interfaces;
 using DevPioneers.Infrastructure.Services;
+using DevPioneers.Infrastructure.Services.Payment;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +23,15 @@ public static class DependencyInjection
 
         // Register DateTime Service
         services.AddScoped<IDateTime, DateTimeService>();
+        services.AddHttpClient("PaymobClient", client =>
+        {
+            // لا تضف Authorization هنا لأننا نحصل على التوكن داخل الخدمة
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.BaseAddress = new Uri(configuration.GetValue<string>("PaymobSettings:BaseUrl") ?? "https://accept.paymob.com");
+        });
+
+        services.AddScoped<IPaymentService, PaymobService>();
+
 
         // Register CurrentUserService (real implementation)
         // This will be used instead of MockCurrentUserService once JWT auth is implemented

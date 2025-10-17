@@ -32,8 +32,8 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.Property(o => o.ExpiresAt)
             .IsRequired();
 
-        builder.Property(o => o.IsVerified)
-            .HasDefaultValue(false);
+        // builder.Property(o => o.IsVerified)
+        //     .HasDefaultValue(false);
 
         builder.Property(o => o.VerifiedAt)
             .IsRequired(false);
@@ -55,8 +55,8 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.HasIndex(o => o.ExpiresAt)
             .HasDatabaseName("IX_OtpCodes_ExpiresAt");
 
-        builder.HasIndex(o => new { o.UserId, o.IsVerified, o.ExpiresAt })
-            .HasDatabaseName("IX_OtpCodes_UserId_IsUsed_ExpiresAt");
+        builder.HasIndex(o => new { o.UserId, o.VerifiedAt, o.ExpiresAt })
+            .HasDatabaseName("IX_OtpCodes_UserId_VerifiedAt_ExpiresAt");
 
         // Relationships
         builder.HasOne(o => o.User)

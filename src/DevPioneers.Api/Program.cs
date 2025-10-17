@@ -8,7 +8,12 @@ using DevPioneers.Application.Common.Interfaces;
 using DevPioneers.Infrastructure;
 using DevPioneers.Infrastructure.Services;
 using DevPioneers.Persistence;
+using Microsoft.OpenApi.Models;
 using System.Net;
+using Hangfire;
+using Hangfire.Dashboard;
+using Hangfire.SqlServer;
+
 
 // Force TLS 1.2 or higher for all connections
 #pragma warning disable SYSLIB0014 // Type or member is obsolete
@@ -26,7 +31,16 @@ builder.Services.AddControllers();
 
 // Add API Explorer for Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "DevPioneers API",
+        Version = "v1",
+        Description = "API documentation for DevPioneers platform"
+    });
+});
+
 
 // ============================================
 // Add Application Layer (MediatR, Validation, Behaviors)
@@ -45,7 +59,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // Temporary: Override with Mock CurrentUserService for migrations only
 // This will be removed once JWT authentication is fully implemented
-builder.Services.AddScoped<ICurrentUserService>(provider => 
+builder.Services.AddScoped<ICurrentUserService>(provider =>
     new MockCurrentUserService());
 
 // ============================================
@@ -63,6 +77,28 @@ builder.Services.AddCors(options =>
 });
 
 // ============================================
+// Add Hangfire
+// ============================================
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Parse(builder.Configuration["HangfireSettings:SchedulePollingInterval"]!),
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = Convert.ToInt32(builder.Configuration["HangfireSettings:WorkerCount"]);
+});
+
+// ============================================
 // Build the app
 // ============================================
 var app = builder.Build();
@@ -77,6 +113,22 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// ============================
+// Hangfire Dashboard
+// ============================
+
+// (اختياري) إعداد صلاحيات الوصول إلى الـ Dashboard
+var dashboardOptions = new DashboardOptions
+{
+    Authorization = new[]
+    {
+        new HangfireDashboardAuthorizationFilter() // سنعرفها بعد قليل
+    }
+};
+
+// تسجيل لوحة التحكم
+app.UseHangfireDashboard("/hangfire", dashboardOptions);
 
 // Use HTTPS Redirection
 app.UseHttpsRedirection();

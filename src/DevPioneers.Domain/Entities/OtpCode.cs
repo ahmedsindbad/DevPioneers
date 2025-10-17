@@ -1,4 +1,5 @@
 // DevPioneers.Domain/Entities/OtpCode.cs
+using System.ComponentModel.DataAnnotations.Schema;
 using DevPioneers.Domain.Common;
 
 namespace DevPioneers.Domain.Entities;
@@ -76,7 +77,8 @@ public class OtpCode : BaseEntity
     /// <summary>
     /// Check if OTP is verified
     /// </summary>
-    public bool IsVerified => VerifiedAt != null;
+    [NotMapped]
+    public bool IsVerified => DateTime.UtcNow >= VerifiedAt;
 
     /// <summary>
     /// Check if max attempts reached
