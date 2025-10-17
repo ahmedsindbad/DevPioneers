@@ -5,46 +5,101 @@ namespace DevPioneers.Application.Common.Models;
 
 /// <summary>
 /// Generic result wrapper for operation outcomes
-/// Implements Result pattern for better error handling
 /// </summary>
-public class Result
+/// <typeparam name="T">Data type</typeparam>
+public class Result<T>
 {
-    protected Result(bool succeeded, IEnumerable<string> errors)
+    public bool IsSuccess { get; private set; }
+    public T? Data { get; private set; }
+    public string? ErrorMessage { get; private set; }
+    public List<string> Errors { get; private set; } = new();
+
+    private Result(bool isSuccess, T? data, string? errorMessage, List<string>? errors = null)
     {
-        Succeeded = succeeded;
-        Errors = errors.ToArray();
+        IsSuccess = isSuccess;
+        Data = data;
+        ErrorMessage = errorMessage;
+        Errors = errors ?? new List<string>();
     }
 
-    public bool Succeeded { get; }
-    public string[] Errors { get; }
-    public bool Failed => !Succeeded;
+    /// <summary>
+    /// Create successful result with data
+    /// </summary>
+    public static Result<T> Success(T data)
+    {
+        return new Result<T>(true, data, null);
+    }
 
-    public static Result Success() => new(true, Array.Empty<string>());
-    public static Result Failure(IEnumerable<string> errors) => new(false, errors);
-    public static Result Failure(params string[] errors) => new(false, errors);
-    public static Result Failure(string error) => new(false, new[] { error });
+    /// <summary>
+    /// Create successful result without data
+    /// </summary>
+    public static Result<T> Success()
+    {
+        return new Result<T>(true, default, null);
+    }
 
-    public static implicit operator Result(string error) => Failure(error);
+    /// <summary>
+    /// Create failed result with error message
+    /// </summary>
+    public static Result<T> Failure(string errorMessage)
+    {
+        return new Result<T>(false, default, errorMessage);
+    }
+
+    /// <summary>
+    /// Create failed result with multiple errors
+    /// </summary>
+    public static Result<T> Failure(List<string> errors)
+    {
+        return new Result<T>(false, default, errors.FirstOrDefault(), errors);
+    }
+
+    /// <summary>
+    /// Create failed result with error message and additional errors
+    /// </summary>
+    public static Result<T> Failure(string errorMessage, List<string> errors)
+    {
+        return new Result<T>(false, default, errorMessage, errors);
+    }
 }
 
 /// <summary>
-/// Generic result with data
+/// Non-generic result for operations without return data
 /// </summary>
-public class Result<T> : Result
+public class Result
 {
-    protected internal Result(bool succeeded, T? data, IEnumerable<string> errors)
-        : base(succeeded, errors)
+    public bool IsSuccess { get; private set; }
+    public string? ErrorMessage { get; private set; }
+    public List<string> Errors { get; private set; } = new();
+
+    private Result(bool isSuccess, string? errorMessage, List<string>? errors = null)
     {
-        Data = data;
+        IsSuccess = isSuccess;
+        ErrorMessage = errorMessage;
+        Errors = errors ?? new List<string>();
     }
 
-    public T? Data { get; }
+    /// <summary>
+    /// Create successful result
+    /// </summary>
+    public static Result Success()
+    {
+        return new Result(true, null);
+    }
 
-    public static Result<T> Success(T data) => new(true, data, Array.Empty<string>());
-    public static new Result<T> Failure(IEnumerable<string> errors) => new(false, default, errors);
-    public static new Result<T> Failure(params string[] errors) => new(false, default, errors);
-    public static new Result<T> Failure(string error) => new(false, default, new[] { error });
+    /// <summary>
+    /// Create failed result with error message
+    /// </summary>
+    public static Result Failure(string errorMessage)
+    {
+        return new Result(false, errorMessage);
+    }
 
-    public static implicit operator Result<T>(T data) => Success(data);
-    public static implicit operator Result<T>(string error) => Failure(error);
+    /// <summary>
+    /// Create failed result with multiple errors
+    /// </summary>
+    public static Result Failure(List<string> errors)
+    {
+        return new Result(false, errors.FirstOrDefault(), errors);
+    }
 }

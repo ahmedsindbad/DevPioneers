@@ -1,15 +1,13 @@
 // ============================================
 // File: DevPioneers.Application/Common/Behaviors/ValidationBehavior.cs
 // ============================================
-using DevPioneers.Application.Common.Exceptions;
 using FluentValidation;
 using MediatR;
 
 namespace DevPioneers.Application.Common.Behaviors;
 
 /// <summary>
-/// MediatR pipeline behavior for automatic validation
-/// Validates all requests that have validators registered
+/// MediatR pipeline behavior for request validation using FluentValidation
 /// </summary>
 public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -26,24 +24,22 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        if (!_validators.Any())
+        if (_validators.Any())
         {
-            return await next();
-        }
+            var context = new ValidationContext<TRequest>(request);
 
-        var context = new ValidationContext<TRequest>(request);
+            var validationResults = await Task.WhenAll(
+                _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
-        var validationResults = await Task.WhenAll(
-            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
+            var failures = validationResults
+                .Where(r => r.Errors.Any())
+                .SelectMany(r => r.Errors)
+                .ToList();
 
-        var failures = validationResults
-            .SelectMany(r => r.Errors)
-            .Where(f => f != null)
-            .ToList();
-
-        if (failures.Any())
-        {
-            throw new DevPioneers.Application.Common.Exceptions.ValidationException(failures);
+            if (failures.Any())
+            {
+                throw new Exceptions.ValidationException(failures);
+            }
         }
 
         return await next();

@@ -3,7 +3,9 @@
 // Main entry point for the application
 // ============================================
 
+using DevPioneers.Application;
 using DevPioneers.Application.Common.Interfaces;
+using DevPioneers.Infrastructure;
 using DevPioneers.Infrastructure.Services;
 using DevPioneers.Persistence;
 using System.Net;
@@ -27,17 +29,22 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // ============================================
+// Add Application Layer (MediatR, Validation, Behaviors)
+// ============================================
+builder.Services.AddApplication();
+
+// ============================================
 // Add Persistence Layer (DbContext, Repositories)
 // ============================================
 builder.Services.AddPersistence(builder.Configuration);
 
 // ============================================
-// Add Infrastructure Services (Temp - will be added in Phase 4)
+// Add Infrastructure Services (Email, DateTime, etc.)
 // ============================================
-// Register DateTime Service
-builder.Services.AddScoped<IDateTime, DateTimeService>();
+builder.Services.AddInfrastructure(builder.Configuration);
 
-// Temporary: Mock CurrentUserService for migrations
+// Temporary: Override with Mock CurrentUserService for migrations only
+// This will be removed once JWT authentication is fully implemented
 builder.Services.AddScoped<ICurrentUserService>(provider => 
     new MockCurrentUserService());
 
@@ -96,6 +103,7 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while migrating the database.");
+        throw; // إعادة إرسال الخطأ للتعامل معه بشكل صحيح
     }
 }
 
@@ -113,9 +121,13 @@ public class MockCurrentUserService : ICurrentUserService
     public int? UserId => null;
     public string? UserFullName => null;
     public string? Email => null;
+    public string? UserEmail => null;
     public IEnumerable<string> Roles => Enumerable.Empty<string>();
+    public IEnumerable<string> UserRoles => Enumerable.Empty<string>();
     public bool IsAuthenticated => false;
     public string? IpAddress => null;
     public string? UserAgent => null;
+    public string? RequestPath => null;
+    public string? HttpMethod => null;
     public bool IsInRole(string role) => false;
 }

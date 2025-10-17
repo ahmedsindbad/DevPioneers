@@ -17,14 +17,23 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Register HTTP Context Accessor (required for CurrentUserService)
+        services.AddHttpContextAccessor();
+
         // Register DateTime Service
         services.AddScoped<IDateTime, DateTimeService>();
+
+        // Register CurrentUserService (real implementation)
+        // This will be used instead of MockCurrentUserService once JWT auth is implemented
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Register Email Service (Mock for development, real implementation later)
+        services.AddScoped<IEmailService, MockEmailService>();
 
         // More services will be added in Phase 4
         // - JwtTokenService
         // - RefreshTokenService
         // - OtpService
-        // - EmailService
         // - PaymobService
         // - CacheService
 

@@ -23,7 +23,7 @@ public static class DependencyInjection
         // Register AuditInterceptor
         services.AddScoped<AuditInterceptor>();
 
-        // Register DbContext
+        // Add Entity Framework
         services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -54,6 +54,10 @@ public static class DependencyInjection
                 new[] { DbLoggerCategory.Database.Command.Name },
                 Microsoft.Extensions.Logging.LogLevel.Information);
 #endif
+
+            // Add interceptors (This requires the AuditInterceptor to be registered first)
+            var auditInterceptor = serviceProvider.GetRequiredService<AuditInterceptor>();
+            options.AddInterceptors(auditInterceptor);
         });
 
         // Register IApplicationDbContext
@@ -81,12 +85,43 @@ public static class DependencyInjection
             }
 
             // Seed data if needed
-            // await SeedDataAsync(context);
+            await SeedDataAsync(context);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ An error occurred while migrating the database: {ex.Message}");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Seed initial data
+    /// </summary>
+    private static async Task SeedDataAsync(ApplicationDbContext context)
+    {
+        try
+        {
+            // Check if roles already exist
+            if (!await context.Roles.AnyAsync())
+            {
+                // Roles will be seeded via RoleConfiguration.HasData()
+                Console.WriteLine("ℹ️ Roles will be seeded via Entity Configuration.");
+            }
+
+            // Check if subscription plans already exist
+            if (!await context.SubscriptionPlans.AnyAsync())
+            {
+                // SubscriptionPlans will be seeded via SubscriptionPlanConfiguration.HasData()
+                Console.WriteLine("ℹ️ Subscription plans will be seeded via Entity Configuration.");
+            }
+
+            await context.SaveChangesAsync();
+            Console.WriteLine("✅ Initial data seeding completed.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Warning: Could not seed data: {ex.Message}");
+            // Don't throw here - seeding errors shouldn't prevent app startup
         }
     }
 }

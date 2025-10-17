@@ -4,67 +4,57 @@
 namespace DevPioneers.Domain.Enums;
 
 /// <summary>
-/// Audit trail action type
+/// Audit trail action types
 /// </summary>
 public enum AuditAction
 {
     /// <summary>
-    /// Entity created
+    /// Create operation (INSERT)
     /// </summary>
     Create = 1,
 
     /// <summary>
-    /// Entity updated
+    /// Read operation (SELECT) - Optional tracking
     /// </summary>
-    Update = 2,
+    Read = 2,
 
     /// <summary>
-    /// Entity deleted
+    /// Update operation (UPDATE)
     /// </summary>
-    Delete = 3,
+    Update = 3,
 
     /// <summary>
-    /// User login
+    /// Delete operation (DELETE/Soft Delete)
     /// </summary>
-    Login = 4,
+    Delete = 4,
 
     /// <summary>
-    /// User logout
+    /// Login action
     /// </summary>
-    Logout = 5,
+    Login = 5,
 
     /// <summary>
-    /// Failed login attempt
+    /// Logout action
     /// </summary>
-    LoginFailed = 6,
+    Logout = 6,
 
     /// <summary>
-    /// Password changed
+    /// Password change
     /// </summary>
-    PasswordChanged = 7,
+    PasswordChange = 7,
 
     /// <summary>
-    /// Password reset requested
+    /// Role assignment
     /// </summary>
-    PasswordResetRequested = 8,
+    RoleAssign = 8,
 
     /// <summary>
-    /// Email verified
+    /// Payment transaction
     /// </summary>
-    EmailVerified = 9,
+    Payment = 9,
 
     /// <summary>
-    /// Phone verified
+    /// Subscription change
     /// </summary>
-    PhoneVerified = 10,
-
-    /// <summary>
-    /// Two-factor authentication enabled
-    /// </summary>
-    TwoFactorEnabled = 11,
-
-    /// <summary>
-    /// Two-factor authentication disabled
-    /// </summary>
-    TwoFactorDisabled = 12
+    Subscription = 10
 }

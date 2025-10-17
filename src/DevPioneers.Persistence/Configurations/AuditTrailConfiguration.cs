@@ -16,52 +16,89 @@ public class AuditTrailConfiguration : IEntityTypeConfiguration<AuditTrail>
         builder.ToTable("AuditTrails");
 
         // Primary key
-        builder.HasKey(at => at.Id);
+        builder.HasKey(a => a.Id);
 
         // Properties
-        builder.Property(at => at.UserFullName)
+        builder.Property(a => a.UserId)
+            .IsRequired(false); // Nullable for system actions
+
+        builder.Property(a => a.UserFullName)
+            .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(at => at.EntityName)
+        builder.Property(a => a.EntityName)
             .IsRequired()
             .HasMaxLength(100);
 
-        builder.Property(at => at.Action)
-            .HasConversion<string>()
-            .HasMaxLength(30);
+        builder.Property(a => a.EntityId)
+            .IsRequired(false); // Nullable for bulk operations
 
-        builder.Property(at => at.IpAddress)
-            .HasMaxLength(45);
+        builder.Property(a => a.Action)
+            .IsRequired()
+            .HasConversion<int>(); // Store enum as int
 
-        builder.Property(at => at.UserAgent)
-            .HasMaxLength(500);
+        builder.Property(a => a.OldValues)
+            .HasColumnType("nvarchar(max)")
+            .IsRequired(false);
 
-        builder.Property(at => at.RequestPath)
-            .HasMaxLength(500);
+        builder.Property(a => a.NewValues)
+            .HasColumnType("nvarchar(max)")
+            .IsRequired(false);
 
-        builder.Property(at => at.RequestMethod)
-            .HasMaxLength(10);
-
-        builder.Property(at => at.TimestampUtc)
+        builder.Property(a => a.Timestamp)
+            .IsRequired()
             .HasDefaultValueSql("GETUTCDATE()");
 
-        // Indexes
-        builder.HasIndex(at => at.UserId)
-            .HasDatabaseName("IX_AuditTrails_UserId")
-            .HasFilter("[UserId] IS NOT NULL");
+        builder.Property(a => a.IpAddress)
+            .HasMaxLength(45) // IPv6 support
+            .IsRequired(false);
 
-        builder.HasIndex(at => new { at.EntityName, at.EntityId })
-            .HasDatabaseName("IX_AuditTrails_Entity")
-            .HasFilter("[EntityId] IS NOT NULL");
+        builder.Property(a => a.UserAgent)
+            .HasMaxLength(500)
+            .IsRequired(false);
 
-        builder.HasIndex(at => at.Action)
+        builder.Property(a => a.RequestMethod)
+            .HasMaxLength(10)
+            .IsRequired(false);
+
+        builder.Property(a => a.RequestUrl)
+            .HasMaxLength(500)
+            .IsRequired(false);
+
+        builder.Property(a => a.DurationMs)
+            .IsRequired(false);
+
+        builder.Property(a => a.ExceptionDetails)
+            .HasColumnType("nvarchar(max)")
+            .IsRequired(false);
+
+        builder.Property(a => a.Metadata)
+            .HasColumnType("nvarchar(max)")
+            .IsRequired(false);
+
+        // Indexes for performance
+        builder.HasIndex(a => a.UserId)
+            .HasDatabaseName("IX_AuditTrails_UserId");
+
+        builder.HasIndex(a => a.EntityName)
+            .HasDatabaseName("IX_AuditTrails_EntityName");
+
+        builder.HasIndex(a => a.Action)
             .HasDatabaseName("IX_AuditTrails_Action");
 
-        builder.HasIndex(at => at.TimestampUtc)
+        builder.HasIndex(a => a.Timestamp)
             .HasDatabaseName("IX_AuditTrails_Timestamp");
 
-        // For cleanup job - composite index
-        builder.HasIndex(at => new { at.TimestampUtc, at.EntityName })
-            .HasDatabaseName("IX_AuditTrails_Timestamp_Entity");
+        builder.HasIndex(a => new { a.EntityName, a.EntityId })
+            .HasDatabaseName("IX_AuditTrails_EntityName_EntityId");
+
+        builder.HasIndex(a => new { a.UserId, a.Timestamp })
+            .HasDatabaseName("IX_AuditTrails_UserId_Timestamp");
+
+        // Relationships
+        builder.HasOne(a => a.User)
+            .WithMany() // User doesn't need navigation back to audit trails
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.SetNull); // Keep audit even if user is deleted
     }
 }

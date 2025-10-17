@@ -46,15 +46,39 @@ public class AuditInterceptor : SaveChangesInterceptor
     }
 
     /// <summary>
-    /// Main audit logic - captures all changed entities
+    /// Synchronous SaveChanges override
+    /// </summary>
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData,
+        InterceptionResult<int> result)
+    {
+        if (eventData.Context is not null)
+        {
+            AuditEntities(eventData.Context);
+        }
+
+        return base.SavingChanges(eventData, result);
+    }
+
+    /// <summary>
+    /// Main audit logic - captures all changed entities (Async)
     /// </summary>
     private async Task AuditEntitiesAsync(DbContext context, CancellationToken cancellationToken)
     {
+        AuditEntities(context);
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Main audit logic - captures all changed entities (Sync)
+    /// </summary>
+    private void AuditEntities(DbContext context)
+    {
         // Get current user info
         var userId = _currentUserService.UserId;
-        var userFullName = _currentUserService.UserFullName;
-        var ipAddress = _currentUserService.IpAddress;
-        var userAgent = _currentUserService.UserAgent;
+        var userFullName = _currentUserService.UserFullName ?? "System";
+        var ipAddress = _currentUserService.IpAddress ?? "Unknown";
+        var userAgent = _currentUserService.UserAgent ?? "Unknown";
 
         // Get all tracked entities that are Added, Modified, or Deleted
         var entries = context.ChangeTracker
@@ -65,49 +89,39 @@ public class AuditInterceptor : SaveChangesInterceptor
                         e.State == EntityState.Deleted))
             .ToList();
 
-        var auditEntries = new List<AuditTrail>();
+        var auditTrails = new List<AuditTrail>();
 
         foreach (var entry in entries)
         {
-            // Skip AuditTrail entity itself to avoid infinite loop
-            if (entry.Entity is AuditTrail)
-                continue;
-
-            var auditEntry = CreateAuditEntry(
-                entry,
-                userId,
-                userFullName,
-                ipAddress,
-                userAgent);
-
-            if (auditEntry != null)
+            var auditTrail = CreateAuditTrail(entry, userId, userFullName, ipAddress, userAgent);
+            if (auditTrail != null)
             {
-                auditEntries.Add(auditEntry);
+                auditTrails.Add(auditTrail);
             }
-
-            // Update auditable entity fields
-            UpdateAuditableEntity(entry, userId);
         }
 
-        // Add audit entries to context
-        if (auditEntries.Any())
+        // Add audit trails to context
+        if (auditTrails.Any())
         {
-            await context.Set<AuditTrail>().AddRangeAsync(auditEntries, cancellationToken);
+            context.Set<AuditTrail>().AddRange(auditTrails);
         }
     }
 
     /// <summary>
-    /// Create audit trail entry from entity entry
+    /// Create audit trail entry for a specific entity change
     /// </summary>
-    private AuditTrail? CreateAuditEntry(
+    private AuditTrail? CreateAuditTrail(
         EntityEntry entry,
         int? userId,
-        string? userFullName,
-        string? ipAddress,
-        string? userAgent)
+        string userFullName,
+        string ipAddress,
+        string userAgent)
     {
-        var entity = (BaseEntity)entry.Entity;
-        var entityName = entry.Entity.GetType().Name;
+        var entity = entry.Entity as BaseEntity;
+        if (entity == null) return null;
+
+        var entityType = entry.Entity.GetType();
+        var entityName = entityType.Name;
 
         // Determine action
         var action = entry.State switch
@@ -115,132 +129,118 @@ public class AuditInterceptor : SaveChangesInterceptor
             EntityState.Added => AuditAction.Create,
             EntityState.Modified => AuditAction.Update,
             EntityState.Deleted => AuditAction.Delete,
-            _ => (AuditAction?)null
+            _ => AuditAction.Read
         };
-
-        if (action == null)
-            return null;
 
         // Capture old and new values
         var oldValues = GetOldValues(entry);
         var newValues = GetNewValues(entry);
+
+        // Skip if no meaningful changes
+        if (action == AuditAction.Update && string.IsNullOrEmpty(oldValues) && string.IsNullOrEmpty(newValues))
+        {
+            return null;
+        }
 
         return new AuditTrail
         {
             UserId = userId,
             UserFullName = userFullName,
             EntityName = entityName,
-            EntityId = entity.Id,
-            Action = action.Value,
+            EntityId = GetEntityId(entity),
+            Action = action,
             OldValues = oldValues,
             NewValues = newValues,
             IpAddress = ipAddress,
             UserAgent = userAgent,
-            TimestampUtc = DateTime.UtcNow
+            Timestamp = _dateTime.UtcNow,
+            Metadata = GetMetadata(entry)
         };
     }
 
     /// <summary>
-    /// Get old values (before change) as JSON
+    /// Get entity ID (handles different primary key types)
+    /// </summary>
+    private int? GetEntityId(BaseEntity entity)
+    {
+        try
+        {
+            return entity.Id;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get old values as JSON (for Update and Delete operations)
     /// </summary>
     private string? GetOldValues(EntityEntry entry)
     {
         if (entry.State == EntityState.Added)
             return null;
 
-        var values = new Dictionary<string, object?>();
+        var oldValues = new Dictionary<string, object?>();
 
         foreach (var property in entry.Properties)
         {
-            // Skip navigation properties and complex types
-            if (property.Metadata.IsForeignKey() ||
-                property.Metadata.IsKey())
-                continue;
-
-            var originalValue = property.OriginalValue;
-
-            // Only include if value changed
-            if (entry.State == EntityState.Modified)
+            if (property.OriginalValue != null)
             {
-                if (Equals(originalValue, property.CurrentValue))
-                    continue;
+                oldValues[property.Metadata.Name] = property.OriginalValue;
             }
-
-            values[property.Metadata.Name] = originalValue;
         }
 
-        return values.Any()
-            ? JsonSerializer.Serialize(values, new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            })
-            : null;
+        return oldValues.Any() ? JsonSerializer.Serialize(oldValues) : null;
     }
 
     /// <summary>
-    /// Get new values (after change) as JSON
+    /// Get new values as JSON (for Add and Update operations)
     /// </summary>
     private string? GetNewValues(EntityEntry entry)
     {
         if (entry.State == EntityState.Deleted)
             return null;
 
-        var values = new Dictionary<string, object?>();
+        var newValues = new Dictionary<string, object?>();
 
         foreach (var property in entry.Properties)
         {
-            // Skip navigation properties and complex types
-            if (property.Metadata.IsForeignKey() ||
-                property.Metadata.IsKey())
-                continue;
-
-            var currentValue = property.CurrentValue;
-
-            // Only include if value changed
-            if (entry.State == EntityState.Modified)
+            if (property.CurrentValue != null)
             {
-                if (Equals(property.OriginalValue, currentValue))
-                    continue;
+                newValues[property.Metadata.Name] = property.CurrentValue;
             }
-
-            values[property.Metadata.Name] = currentValue;
         }
 
-        return values.Any()
-            ? JsonSerializer.Serialize(values, new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            })
-            : null;
+        return newValues.Any() ? JsonSerializer.Serialize(newValues) : null;
     }
 
     /// <summary>
-    /// Update CreatedById, UpdatedById, DeletedById for auditable entities
+    /// Get additional metadata about the change
     /// </summary>
-    private void UpdateAuditableEntity(EntityEntry entry, int? userId)
+    private string? GetMetadata(EntityEntry entry)
     {
-        if (entry.Entity is not IAuditableEntity auditableEntity)
-            return;
-
-        switch (entry.State)
+        var metadata = new Dictionary<string, object>
         {
-            case EntityState.Added:
-                auditableEntity.CreatedById = userId;
-                break;
+            ["EntityState"] = entry.State.ToString(),
+            ["Timestamp"] = _dateTime.UtcNow,
+            ["AssemblyName"] = entry.Entity.GetType().Assembly.GetName().Name ?? "Unknown"
+        };
 
-            case EntityState.Modified:
-                auditableEntity.UpdatedById = userId;
-                break;
+        // Add changed properties for Update operations
+        if (entry.State == EntityState.Modified)
+        {
+            var changedProperties = entry.Properties
+                .Where(p => p.IsModified)
+                .Select(p => p.Metadata.Name)
+                .ToList();
 
-            case EntityState.Deleted:
-                // Soft delete - update DeletedById
-                if (entry.Entity is BaseEntity baseEntity && baseEntity.IsDeleted)
-                {
-                    auditableEntity.DeletedById = userId;
-                }
-                break;
+            if (changedProperties.Any())
+            {
+                metadata["ChangedProperties"] = changedProperties;
+            }
         }
+
+        return JsonSerializer.Serialize(metadata);
     }
 }

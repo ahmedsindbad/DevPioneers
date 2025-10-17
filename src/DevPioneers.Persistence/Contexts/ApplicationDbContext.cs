@@ -93,120 +93,109 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     // ============================================
 
     /// <summary>
-    /// Configure global query filter for soft delete
-    /// Automatically filters out deleted entities
+    /// Configure global query filters for soft delete
     /// </summary>
     private void ConfigureGlobalQueryFilters(ModelBuilder modelBuilder)
     {
-        // DISABLED for initial migration to avoid EF Core issues
-        // TODO: Enable after first successful migration
-        // Uncomment the code below after database is created
-        
-        return; // Early return - filter is disabled
-        
-        /*
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            // Check if entity inherits from BaseEntity
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
-            {
-                // Create filter expression: entity => !entity.IsDeleted
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
-                var filter = Expression.Lambda(Expression.Not(property), parameter);
+        // Get all entity types that inherit from BaseEntity
+        var entityTypes = modelBuilder.Model
+            .GetEntityTypes()
+            .Where(e => typeof(BaseEntity).IsAssignableFrom(e.ClrType))
+            .ToList();
 
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
-            }
+        foreach (var entityType in entityTypes)
+        {
+            // Create lambda expression: entity => !entity.IsDeleted
+            var parameter = Expression.Parameter(entityType.ClrType, "entity");
+            var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+            var condition = Expression.Equal(property, Expression.Constant(false));
+            var lambda = Expression.Lambda(condition, parameter);
+
+            // Apply the filter
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
         }
-        */
     }
 
     /// <summary>
-    /// Configure decimal precision for money/currency fields
-    /// Sets precision to (18, 2) for all decimal properties
+    /// Configure decimal precision globally for money fields
     /// </summary>
     private void ConfigureDecimalPrecision(ModelBuilder modelBuilder)
     {
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+            .SelectMany(t => t.GetProperties())
+            .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
         {
-            foreach (var property in entityType.GetProperties())
-            {
-                if (property.ClrType == typeof(decimal) || property.ClrType == typeof(decimal?))
-                {
-                    property.SetPrecision(18);
-                    property.SetScale(2);
-                }
-            }
+            // Set precision to 18,2 for all decimal properties
+            // This covers money, prices, amounts, etc.
+            property.SetColumnType("decimal(18,2)");
         }
     }
 
-    // ============================================
-    // SaveChanges Override for Audit Trail
-    // ============================================
-
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        // Update timestamps before saving
-        UpdateTimestamps();
-
-        // Save changes (audit interceptor will handle audit trail)
-        return await base.SaveChangesAsync(cancellationToken);
-    }
-
+    /// <summary>
+    /// Override SaveChanges to handle audit and soft delete
+    /// </summary>
     public override int SaveChanges()
     {
+        ProcessSoftDeletes();
         UpdateTimestamps();
         return base.SaveChanges();
     }
 
     /// <summary>
-    /// Update CreatedAt and UpdatedAt timestamps
+    /// Override SaveChangesAsync to handle audit and soft delete
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ProcessSoftDeletes();
+        UpdateTimestamps();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Process soft deletes - convert Delete operations to IsDeleted=true
+    /// </summary>
+    private void ProcessSoftDeletes()
+    {
+        var deletedEntries = ChangeTracker
+            .Entries<BaseEntity>()
+            .Where(e => e.State == EntityState.Deleted)
+            .ToList();
+
+        foreach (var entry in deletedEntries)
+        {
+            entry.State = EntityState.Modified;
+            entry.Entity.IsDeleted = true;
+            entry.Entity.DeletedAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    /// <summary>
+    /// Update CreatedAtUtc and UpdatedAtUtc timestamps
     /// </summary>
     private void UpdateTimestamps()
     {
-        var entries = ChangeTracker.Entries<BaseEntity>();
+        var entries = ChangeTracker
+            .Entries<BaseEntity>()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified)
+            .ToList();
+
+        var utcNow = DateTime.UtcNow;
 
         foreach (var entry in entries)
         {
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+                    entry.Entity.CreatedAtUtc = utcNow;
+                    entry.Entity.UpdatedAtUtc = utcNow;
                     break;
 
                 case EntityState.Modified:
-                    entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
-                    break;
-
-                case EntityState.Deleted:
-                    // Soft delete: mark as deleted instead of removing
-                    entry.State = EntityState.Modified;
-                    entry.Entity.IsDeleted = true;
-                    entry.Entity.DeletedAtUtc = DateTime.UtcNow;
+                    entry.Entity.UpdatedAtUtc = utcNow;
+                    // Prevent CreatedAtUtc from being modified
+                    entry.Property(nameof(BaseEntity.CreatedAtUtc)).IsModified = false;
                     break;
             }
         }
     }
-
-    // ============================================
-    // Helper Methods for Raw SQL
-    // ============================================
-
-    /// <summary>
-    /// Execute raw SQL command
-    /// </summary>
-    public async Task<int> ExecuteSqlRawAsync(string sql, CancellationToken cancellationToken = default)
-    {
-        return await Database.ExecuteSqlRawAsync(sql, cancellationToken);
-    }
-
-    /// <summary>
-    /// Execute raw SQL query and return list
-    /// </summary>
-    public async Task<List<T>> ExecuteSqlQueryAsync<T>(string sql, CancellationToken cancellationToken = default) where T : class
-    {
-        return await Set<T>().FromSqlRaw(sql).ToListAsync(cancellationToken);
-    }
 }
-
-// Required for LINQ expressions

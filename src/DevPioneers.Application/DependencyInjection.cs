@@ -16,24 +16,19 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        // Add MediatR
+        // Register MediatR
         services.AddMediatR(cfg =>
         {
-            cfg.RegisterServicesFromAssembly(assembly);
- 
-            // Add pipeline behaviors (order matters!)
-            cfg.AddBehavior<AuthorizationBehavior<,>>();
-            cfg.AddBehavior<ValidationBehavior<,>>();
-            cfg.AddBehavior<CachingBehavior<,>>();
-            cfg.AddBehavior<LoggingBehavior<,>>();
-            cfg.AddBehavior<PerformanceBehavior<,>>();
-            cfg.AddBehavior<TransactionBehavior<,>>();
+            cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
         });
 
-        // Add FluentValidation
-        services.AddValidatorsFromAssembly(assembly);
+        // Register FluentValidation validators
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Register MediatR pipeline behaviors
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 
         return services;
     }

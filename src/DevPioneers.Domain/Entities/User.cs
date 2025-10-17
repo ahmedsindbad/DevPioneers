@@ -3,6 +3,7 @@
 // ============================================
 using DevPioneers.Domain.Common;
 using DevPioneers.Domain.Enums;
+using BCrypt.Net;
 
 namespace DevPioneers.Domain.Entities;
 
@@ -170,4 +171,34 @@ public class User : AuditableEntity
         FailedLoginAttempts = 0;
         LockedUntil = null;
     }
+    /// <summary>
+    /// Verify password against stored hash
+    /// </summary>
+    public bool VerifyPassword(string password)
+    {
+        return BCrypt.Net.BCrypt.Verify(password, PasswordHash);
+    }
+
+    /// <summary>
+    /// Record failed login attempt
+    /// </summary>
+    public void RecordFailedLogin()
+    {
+        IncrementFailedLoginAttempts();
+    }
+
+    /// <summary>
+    /// Record successful login
+    /// </summary>
+    public void RecordSuccessfulLogin(string? ipAddress = null)
+    {
+        ResetFailedLoginAttempts();
+        LastLoginAt = DateTime.UtcNow;
+        LastLoginIp = ipAddress;
+    }
+
+    /// <summary>
+    /// Check if account is currently locked (alias for IsLocked)
+    /// </summary>
+    public bool IsAccountLocked() => IsLocked();
 }

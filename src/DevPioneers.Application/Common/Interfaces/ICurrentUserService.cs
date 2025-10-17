@@ -4,12 +4,12 @@
 namespace DevPioneers.Application.Common.Interfaces;
 
 /// <summary>
-/// Service for accessing current user context information
+/// Service to get current authenticated user information
 /// </summary>
 public interface ICurrentUserService
 {
     /// <summary>
-    /// Current user ID (null if not authenticated)
+    /// Current user ID (from JWT claims)
     /// </summary>
     int? UserId { get; }
 
@@ -21,40 +21,50 @@ public interface ICurrentUserService
     /// <summary>
     /// Current user email
     /// </summary>
+    string? Email { get; }
+
+    /// <summary>
+    /// Current user email (alternative property name)
+    /// </summary>
     string? UserEmail { get; }
 
     /// <summary>
-    /// Current user roles
+    /// Current user roles (as IEnumerable)
+    /// </summary>
+    IEnumerable<string> Roles { get; }
+
+    /// <summary>
+    /// Current user roles (as IEnumerable - alternative property name)
     /// </summary>
     IEnumerable<string> UserRoles { get; }
 
     /// <summary>
-    /// Check if user is in specific role
-    /// </summary>
-    bool IsInRole(string role);
-
-    /// <summary>
-    /// Check if user is authenticated
+    /// Is user authenticated
     /// </summary>
     bool IsAuthenticated { get; }
 
     /// <summary>
-    /// IP address of current request
+    /// IP Address of current request
     /// </summary>
     string? IpAddress { get; }
 
     /// <summary>
-    /// User agent of current request
+    /// User Agent of current request
     /// </summary>
     string? UserAgent { get; }
 
     /// <summary>
-    /// Request path
+    /// HTTP Request path
     /// </summary>
     string? RequestPath { get; }
 
     /// <summary>
-    /// HTTP method
+    /// HTTP Method (GET, POST, PUT, DELETE, etc.)
     /// </summary>
     string? HttpMethod { get; }
+
+    /// <summary>
+    /// Check if user has a specific role
+    /// </summary>
+    bool IsInRole(string role);
 }

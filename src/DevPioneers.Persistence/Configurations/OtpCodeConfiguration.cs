@@ -15,42 +15,53 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.ToTable("OtpCodes");
 
         // Primary key
-        builder.HasKey(otp => otp.Id);
+        builder.HasKey(o => o.Id);
 
         // Properties
-        builder.Property(otp => otp.Mobile)
+        builder.Property(o => o.UserId)
+            .IsRequired();
+
+        builder.Property(o => o.Code)
             .IsRequired()
-            .HasMaxLength(20);
+            .HasMaxLength(10); // 6 digits usually, but allow some flexibility
 
-        builder.Property(otp => otp.Email)
-            .HasMaxLength(256);
-
-        builder.Property(otp => otp.Code)
-            .IsRequired()
-            .HasMaxLength(100); // Hashed
-
-        builder.Property(otp => otp.Purpose)
+        builder.Property(o => o.Purpose)
             .IsRequired()
             .HasMaxLength(50);
 
-        builder.Property(otp => otp.IpAddress)
-            .HasMaxLength(45);
+        builder.Property(o => o.ExpiresAt)
+            .IsRequired();
 
-        builder.Property(otp => otp.Attempts)
+        builder.Property(o => o.IsUsed)
+            .HasDefaultValue(false);
+
+        builder.Property(o => o.UsedAt)
+            .IsRequired(false);
+
+        builder.Property(o => o.UsedFromIp)
+            .HasMaxLength(45) // IPv6 support
+            .IsRequired(false);
+
+        builder.Property(o => o.AttemptCount)
             .HasDefaultValue(0);
 
-        builder.Property(otp => otp.MaxAttempts)
-            .HasDefaultValue(3);
+        // Indexes for performance
+        builder.HasIndex(o => o.UserId)
+            .HasDatabaseName("IX_OtpCodes_UserId");
 
-        // Indexes
-        builder.HasIndex(otp => new { otp.Mobile, otp.Purpose, otp.ExpiresAt })
-            .HasDatabaseName("IX_OtpCodes_Mobile_Purpose_Expires");
+        builder.HasIndex(o => new { o.Code, o.UserId })
+            .HasDatabaseName("IX_OtpCodes_Code_UserId");
 
-        builder.HasIndex(otp => otp.ExpiresAt)
+        builder.HasIndex(o => o.ExpiresAt)
             .HasDatabaseName("IX_OtpCodes_ExpiresAt");
 
-        builder.HasIndex(otp => otp.UserId)
-            .HasDatabaseName("IX_OtpCodes_UserId")
-            .HasFilter("[UserId] IS NOT NULL");
+        builder.HasIndex(o => new { o.UserId, o.IsUsed, o.ExpiresAt })
+            .HasDatabaseName("IX_OtpCodes_UserId_IsUsed_ExpiresAt");
+
+        // Relationships
+        builder.HasOne(o => o.User)
+            .WithMany(u => u.OtpCodes)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

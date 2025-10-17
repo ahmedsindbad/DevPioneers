@@ -7,19 +7,19 @@ using DevPioneers.Domain.Enums;
 namespace DevPioneers.Domain.Entities;
 
 /// <summary>
-/// Audit trail entity for tracking all system activities
+/// Audit trail entity to track all system activities
 /// </summary>
 public class AuditTrail : BaseEntity
 {
     /// <summary>
-    /// User ID who performed the action (null for system actions)
+    /// User who performed the action (nullable for system actions)
     /// </summary>
     public int? UserId { get; set; }
 
     /// <summary>
-    /// User full name (denormalized for performance)
+    /// Full name of the user who performed the action
     /// </summary>
-    public string? UserFullName { get; set; }
+    public string UserFullName { get; set; } = string.Empty;
 
     /// <summary>
     /// Entity name (table name)
@@ -27,7 +27,7 @@ public class AuditTrail : BaseEntity
     public string EntityName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Entity ID (record ID)
+    /// Entity ID (nullable for bulk operations)
     /// </summary>
     public int? EntityId { get; set; }
 
@@ -37,39 +37,29 @@ public class AuditTrail : BaseEntity
     public AuditAction Action { get; set; }
 
     /// <summary>
-    /// Old values (JSON) - before the change
+    /// Old values (JSON) - for Update and Delete operations
     /// </summary>
     public string? OldValues { get; set; }
 
     /// <summary>
-    /// New values (JSON) - after the change
+    /// New values (JSON) - for Create and Update operations
     /// </summary>
     public string? NewValues { get; set; }
 
     /// <summary>
-    /// IP address
+    /// Timestamp when the action occurred
+    /// </summary>
+    public DateTime Timestamp { get; set; }
+
+    /// <summary>
+    /// IP Address of the request
     /// </summary>
     public string? IpAddress { get; set; }
 
     /// <summary>
-    /// User agent (browser/device info)
+    /// User Agent (browser/device info)
     /// </summary>
     public string? UserAgent { get; set; }
-
-    /// <summary>
-    /// Timestamp (UTC)
-    /// </summary>
-    public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
-
-    /// <summary>
-    /// Additional metadata (JSON)
-    /// </summary>
-    public string? Metadata { get; set; }
-
-    /// <summary>
-    /// Request path (API endpoint)
-    /// </summary>
-    public string? RequestPath { get; set; }
 
     /// <summary>
     /// Request method (GET, POST, PUT, DELETE)
@@ -77,17 +67,27 @@ public class AuditTrail : BaseEntity
     public string? RequestMethod { get; set; }
 
     /// <summary>
-    /// Response status code
+    /// Request URL/endpoint
     /// </summary>
-    public int? ResponseStatusCode { get; set; }
+    public string? RequestUrl { get; set; }
 
     /// <summary>
-    /// Duration in milliseconds
+    /// Duration of the operation in milliseconds
     /// </summary>
     public long? DurationMs { get; set; }
 
     /// <summary>
-    /// Exception details (if any error occurred)
+    /// Exception details if operation failed
     /// </summary>
     public string? ExceptionDetails { get; set; }
+
+    /// <summary>
+    /// Additional metadata (JSON)
+    /// </summary>
+    public string? Metadata { get; set; }
+
+    /// <summary>
+    /// Navigation: User who performed the action
+    /// </summary>
+    public virtual User? User { get; set; }
 }
