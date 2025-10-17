@@ -31,5 +31,7 @@ public enum BillingCycle
     /// <summary>
     /// Lifetime (one-time payment)
     /// </summary>
-    Lifetime = 0
+    Lifetime = 0,
+
+    Weekly = 7
 }

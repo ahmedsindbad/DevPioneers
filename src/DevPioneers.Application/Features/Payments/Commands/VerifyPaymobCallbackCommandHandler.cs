@@ -63,7 +63,7 @@ public class VerifyPaymobCallbackCommandHandler : IRequestHandler<VerifyPaymobCa
 
             if (!verificationResult.IsValid)
             {
-                _logger.LogError("Invalid payment callback for order {PaymobOrderId}: {Error}", 
+                _logger.LogError("Invalid payment callback for order {PaymobOrderId}: {Error}",
                     request.PaymobOrderId, verificationResult.ErrorMessage);
                 return Result<PaymentVerificationDto>.Failure("Invalid payment callback");
             }
@@ -72,14 +72,15 @@ public class VerifyPaymobCallbackCommandHandler : IRequestHandler<VerifyPaymobCa
             if (verificationResult.IsSuccess)
             {
                 payment.MarkAsCompleted(request.PaymobTransactionId);
-                
+
                 // Send payment receipt email
                 try
                 {
-                    await _emailService.SendPaymentReceiptEmailAsync(
+                    await _emailService.SendPaymentReceiptAsync(
                         payment.User.Email,
-                        payment.User.FullName,
-                        $"Payment of {payment.Amount:C} {payment.Currency} completed successfully",
+                        payment.Amount,
+                        payment.Currency,
+                        payment.PaymobTransactionId!,
                         cancellationToken);
                 }
                 catch (Exception ex)
@@ -106,7 +107,7 @@ public class VerifyPaymobCallbackCommandHandler : IRequestHandler<VerifyPaymobCa
                 VerifiedAt = _dateTime.UtcNow
             };
 
-            _logger.LogInformation("Payment {PaymentId} verification completed. Success: {IsSuccess}", 
+            _logger.LogInformation("Payment {PaymentId} verification completed. Success: {IsSuccess}",
                 payment.Id, verificationResult.IsSuccess);
 
             return Result<PaymentVerificationDto>.Success(verificationDto);

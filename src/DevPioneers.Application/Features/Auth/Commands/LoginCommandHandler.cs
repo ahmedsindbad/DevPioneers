@@ -67,7 +67,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
             if (!(user.PasswordHash == HashPassword(request.Password)))
             {
                 // Increment failed login attempts
-                user.RecordFailedLogin(_dateTime.UtcNow);
+                user.RecordFailedLogin();
                 await _context.SaveChangesAsync(cancellationToken);
 
                 _logger.LogWarning("Login attempt failed: Invalid password for user {UserId}", user.Id);
@@ -86,7 +86,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
             }
 
             // Successful login
-            user.RecordSuccessfulLogin(_dateTime.UtcNow, request.IpAddress);
+            user.RecordSuccessfulLogin(request.IpAddress);
             await _context.SaveChangesAsync(cancellationToken);
 
             var authResponse = new AuthResponseDto

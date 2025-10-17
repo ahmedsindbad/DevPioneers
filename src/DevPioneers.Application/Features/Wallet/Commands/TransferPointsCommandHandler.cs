@@ -70,14 +70,14 @@ public class TransferPointsCommandHandler : IRequestHandler<TransferPointsComman
             var toPointsBefore = toWallet.Points;
 
             // Transfer points
-            fromWallet.RemovePoints(request.Points, $"Points transferred to user {request.ToUserId}: {request.Description}");
-            toWallet.AddPoints(request.Points, $"Points received from user {request.FromUserId}: {request.Description}");
+            fromWallet.RemovePoints(request.Points);
+            toWallet.AddPoints(request.Points);
 
             // Create transaction records
             var fromTransaction = new WalletTransaction
             {
                 WalletId = fromWallet.Id,
-                Type = TransactionType.PointsDebit,
+                Type = TransactionType.Debit,
                 Amount = request.Points,
                 Currency = "PTS",
                 BalanceBefore = fromPointsBefore,
@@ -90,7 +90,7 @@ public class TransferPointsCommandHandler : IRequestHandler<TransferPointsComman
             var toTransaction = new WalletTransaction
             {
                 WalletId = toWallet.Id,
-                Type = TransactionType.PointsCredit,
+                Type = TransactionType.Credit,
                 Amount = request.Points,
                 Currency = "PTS",
                 BalanceBefore = toPointsBefore,

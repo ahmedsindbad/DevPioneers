@@ -1,6 +1,4 @@
-// ============================================
-// File: DevPioneers.Domain/Entities/OtpCode.cs
-// ============================================
+// DevPioneers.Domain/Entities/OtpCode.cs
 using DevPioneers.Domain.Common;
 
 namespace DevPioneers.Domain.Entities;
@@ -14,6 +12,11 @@ public class OtpCode : BaseEntity
     /// User ID (nullable for registration flow)
     /// </summary>
     public int? UserId { get; set; }
+
+    /// <summary>
+    /// Navigation: related user (optional)
+    /// </summary>
+    public virtual User? User { get; set; }
 
     /// <summary>
     /// Mobile number

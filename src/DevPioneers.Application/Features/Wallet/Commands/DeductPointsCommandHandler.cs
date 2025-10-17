@@ -56,13 +56,13 @@ public class DeductPointsCommandHandler : IRequestHandler<DeductPointsCommand, R
             var pointsBefore = wallet.Points;
 
             // Deduct points
-            wallet.RemovePoints(request.Points, request.Description);
+            wallet.RemovePoints(request.Points);
 
             // Create transaction record
             var transaction = new WalletTransaction
             {
                 WalletId = wallet.Id,
-                Type = TransactionType.PointsDebit,
+                Type = TransactionType.Debit,
                 Amount = request.Points,
                 Currency = "PTS",
                 BalanceBefore = pointsBefore,
@@ -81,7 +81,7 @@ public class DeductPointsCommandHandler : IRequestHandler<DeductPointsCommand, R
                 Id = transaction.Id,
                 WalletId = wallet.Id,
                 UserId = request.UserId,
-                Type = transaction.Type.ToString(),
+                Type = transaction.Type,
                 Amount = transaction.Amount,
                 Currency = transaction.Currency,
                 BalanceBefore = transaction.BalanceBefore,

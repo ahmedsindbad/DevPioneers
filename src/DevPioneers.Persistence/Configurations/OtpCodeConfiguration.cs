@@ -32,17 +32,17 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.Property(o => o.ExpiresAt)
             .IsRequired();
 
-        builder.Property(o => o.IsUsed)
+        builder.Property(o => o.IsVerified)
             .HasDefaultValue(false);
 
-        builder.Property(o => o.UsedAt)
+        builder.Property(o => o.VerifiedAt)
             .IsRequired(false);
 
-        builder.Property(o => o.UsedFromIp)
+        builder.Property(o => o.IpAddress)
             .HasMaxLength(45) // IPv6 support
             .IsRequired(false);
 
-        builder.Property(o => o.AttemptCount)
+        builder.Property(o => o.Attempts)
             .HasDefaultValue(0);
 
         // Indexes for performance
@@ -55,7 +55,7 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
         builder.HasIndex(o => o.ExpiresAt)
             .HasDatabaseName("IX_OtpCodes_ExpiresAt");
 
-        builder.HasIndex(o => new { o.UserId, o.IsUsed, o.ExpiresAt })
+        builder.HasIndex(o => new { o.UserId, o.IsVerified, o.ExpiresAt })
             .HasDatabaseName("IX_OtpCodes_UserId_IsUsed_ExpiresAt");
 
         // Relationships

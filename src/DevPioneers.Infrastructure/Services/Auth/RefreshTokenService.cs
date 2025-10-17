@@ -71,41 +71,35 @@ public class RefreshTokenService : IRefreshTokenService
         return refreshToken?.IsActive == true ? refreshToken : null;
     }
 
-    public async Task<RefreshToken?> RefreshTokenAsync(string token, string? ipAddress = null)
+   public async Task<RefreshToken?> RefreshTokenAsync(string token, string? ipAddress = null)
     {
         var refreshToken = await GetValidRefreshTokenAsync(token);
-        
-        if (refreshToken == null || !refreshToken.CanBeRefreshed())
+        if (refreshToken == null)
             return null;
 
-        // Mark current token as used
-        refreshToken.MarkAsUsed(ipAddress);
+        // Revoke current token
+        await RevokeRefreshTokenAsync(token, ipAddress, "Replaced by new token");
 
-        // Generate new refresh token
-        var newRefreshToken = await GenerateRefreshTokenAsync(
+        // Generate new token
+        return await GenerateRefreshTokenAsync(
             refreshToken.UserId, 
             refreshToken.UserAgent, 
             ipAddress, 
-            refreshToken.DeviceId);
-
-        // Set replacement reference
-        refreshToken.ReplacedByToken = newRefreshToken.Token;
-
-        await _context.SaveChangesAsync();
-
-        return newRefreshToken;
+            refreshToken.DeviceId
+        );
     }
 
     public async Task RevokeRefreshTokenAsync(string token, string? ipAddress = null, string? reason = null)
     {
         var hashedToken = ComputeHash(token);
-        
         var refreshToken = await _context.RefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
 
-        if (refreshToken != null)
+        if (refreshToken != null && refreshToken.IsActive)
         {
-            refreshToken.Revoke(ipAddress, reason ?? "Token manually revoked");
+            refreshToken.RevokedAt = DateTime.UtcNow;
+            refreshToken.RevokedByIp = ipAddress;
+            refreshToken.RevokedReason = reason;
             await _context.SaveChangesAsync();
         }
     }
@@ -118,7 +112,9 @@ public class RefreshTokenService : IRefreshTokenService
 
         foreach (var token in tokens)
         {
-            token.Revoke(ipAddress, reason ?? "All tokens revoked for user");
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedByIp = ipAddress;
+            token.RevokedReason = reason ?? "Revoked all tokens";
         }
 
         await _context.SaveChangesAsync();
@@ -126,23 +122,20 @@ public class RefreshTokenService : IRefreshTokenService
 
     public async Task CleanupExpiredTokensAsync()
     {
-        var cutoffDate = DateTime.UtcNow.AddDays(-7); // Keep revoked tokens for 7 days for audit
-        
-        var tokensToDelete = await _context.RefreshTokens
-            .Where(rt => 
-                (rt.IsExpired && rt.ExpiresAt < cutoffDate) ||
-                (rt.IsRevoked && rt.RevokedAt < cutoffDate) ||
-                (rt.IsUsed && rt.UsedAt < cutoffDate))
+        var cutoffDate = DateTime.UtcNow.AddDays(-90); // Keep for 90 days for audit
+        var expiredTokens = await _context.RefreshTokens
+            .Where(rt => rt.ExpiresAt < cutoffDate)
             .ToListAsync();
 
-        _context.RefreshTokens.RemoveRange(tokensToDelete);
+        _context.RefreshTokens.RemoveRange(expiredTokens);
         await _context.SaveChangesAsync();
     }
 
-    private static string ComputeHash(string input)
+    private string ComputeHash(string input)
     {
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-        return Convert.ToBase64String(hashBytes);
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
     }
 }

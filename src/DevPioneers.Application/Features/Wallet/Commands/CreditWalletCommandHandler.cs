@@ -85,7 +85,7 @@ public class CreditWalletCommandHandler : IRequestHandler<CreditWalletCommand, R
                 Id = transaction.Id,
                 WalletId = wallet.Id,
                 UserId = request.UserId,
-                Type = transaction.Type.ToString(),
+                Type = transaction.Type,
                 Amount = transaction.Amount,
                 Currency = transaction.Currency,
                 BalanceBefore = transaction.BalanceBefore,

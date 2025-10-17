@@ -108,7 +108,7 @@ public class GetWalletStatisticsQueryHandler : IRequestHandler<GetWalletStatisti
                 LifetimeSpent = wallet.TotalSpent,
                 TransactionsByType = transactionsByType.ToDictionary(
                     x => x.Type.ToString(), 
-                    x => new { Count = x.Count, Total = x.Total })
+                    x => (object)new { Count = x.Count, Total = x.Total })
             };
 
             _logger.LogInformation("Retrieved wallet statistics for user {UserId} for period {FromDate} to {ToDate}", 

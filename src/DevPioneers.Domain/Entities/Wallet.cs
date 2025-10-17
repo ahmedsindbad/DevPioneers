@@ -95,6 +95,24 @@ public class Wallet : AuditableEntity
     }
 
     /// <summary>
+    /// Remove points from the wallet (e.g., for admin correction or reward reversal)
+    /// </summary>
+    public void RemovePoints(int points)
+    {
+        if (!IsActive)
+            throw new InvalidOperationException("Cannot modify points on an inactive wallet.");
+
+        if (points <= 0)
+            throw new ArgumentException("Points to remove must be positive.", nameof(points));
+
+        if (Points < points)
+            throw new InvalidOperationException($"Cannot remove {points} points. Available points: {Points}.");
+
+        Points -= points;
+    }
+
+
+    /// <summary>
     /// Deduct points
     /// </summary>
     public void DeductPoints(int points)

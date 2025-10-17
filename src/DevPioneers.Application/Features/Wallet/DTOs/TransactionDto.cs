@@ -2,6 +2,7 @@
 // File: DevPioneers.Application/Features/Wallet/DTOs/TransactionDto.cs
 // ============================================
 using DevPioneers.Application.Common.Models;
+using DevPioneers.Domain.Enums;
 
 namespace DevPioneers.Application.Features.Wallet.DTOs;
 
@@ -9,9 +10,11 @@ public class TransactionDto : BaseDto
 {
     public int WalletId { get; set; }
     public int UserId { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public TransactionType Type { get; set; }
     public decimal Amount { get; set; }
+    public int? Points { get; set; }
     public string Currency { get; set; } = string.Empty;
+    public string? Metadata { get; set; } = string.Empty;
     public decimal BalanceBefore { get; set; }
     public decimal BalanceAfter { get; set; }
     public string Description { get; set; } = string.Empty;
@@ -20,8 +23,8 @@ public class TransactionDto : BaseDto
     public int? TransferToUserId { get; set; }
  
     // Calculated properties
-    public bool IsCredit => Type.Contains("Credit");
-    public bool IsDebit => Type.Contains("Debit");
+    public bool IsCredit => Type == TransactionType.Credit;
+    public bool IsDebit => Type == TransactionType.Debit;
     public bool IsPointsTransaction => Currency == "PTS";
     public bool IsMoneyTransaction => Currency != "PTS";
     public bool IsTransfer => TransferToUserId.HasValue;

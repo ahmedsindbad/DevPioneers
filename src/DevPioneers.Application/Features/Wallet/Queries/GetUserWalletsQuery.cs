@@ -40,7 +40,7 @@ public class GetUserWalletsQueryHandler : IRequestHandler<GetUserWalletsQuery, R
         try
         {
             // Build query
-            var query = _context.Wallets
+            IQueryable<DevPioneers.Domain.Entities.Wallet>  query = _context.Wallets
                 .AsNoTracking()
                 .Include(w => w.User);
 
@@ -64,8 +64,7 @@ public class GetUserWalletsQueryHandler : IRequestHandler<GetUserWalletsQuery, R
             {
                 var searchTerm = request.SearchTerm.Trim().ToLower();
                 query = query.Where(w => w.User.Email.ToLower().Contains(searchTerm) ||
-                                         w.User.FirstName.ToLower().Contains(searchTerm) ||
-                                         w.User.LastName.ToLower().Contains(searchTerm) ||
+                                         w.User.FullName.ToLower().Contains(searchTerm) ||
                                          (w.User.Mobile != null && w.User.Mobile.Contains(searchTerm)));
             }
 
@@ -94,7 +93,7 @@ public class GetUserWalletsQueryHandler : IRequestHandler<GetUserWalletsQuery, R
                     UpdatedAtUtc = w.UpdatedAtUtc,
                     // Include user info for admin
                     UserEmail = w.User.Email,
-                    UserFullName = $"{w.User.FirstName} {w.User.LastName}".Trim(),
+                    UserFullName = w.User.FullName,
                     UserMobile = w.User.Mobile
                 })
                 .ToListAsync(cancellationToken);

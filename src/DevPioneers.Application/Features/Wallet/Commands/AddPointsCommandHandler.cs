@@ -50,13 +50,13 @@ public class AddPointsCommandHandler : IRequestHandler<AddPointsCommand, Result<
             var pointsBefore = wallet.Points;
 
             // Add points
-            wallet.AddPoints(request.Points, request.Description);
+            wallet.AddPoints(request.Points);
 
             // Create transaction record
             var transaction = new WalletTransaction
             {
                 WalletId = wallet.Id,
-                Type = TransactionType.PointsCredit,
+                Type = TransactionType.Credit,
                 Amount = request.Points,
                 Currency = "PTS",
                 BalanceBefore = pointsBefore,
@@ -75,7 +75,7 @@ public class AddPointsCommandHandler : IRequestHandler<AddPointsCommand, Result<
                 Id = transaction.Id,
                 WalletId = wallet.Id,
                 UserId = request.UserId,
-                Type = transaction.Type.ToString(),
+                Type = transaction.Type,
                 Amount = transaction.Amount,
                 Currency = transaction.Currency,
                 BalanceBefore = transaction.BalanceBefore,

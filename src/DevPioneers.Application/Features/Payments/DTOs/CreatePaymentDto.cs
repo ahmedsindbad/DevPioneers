@@ -10,5 +10,5 @@ public class CreatePaymentDto
     public string Currency { get; set; } = "EGP";
     public string Description { get; set; } = string.Empty;
     public int? SubscriptionPlanId { get; set; }
-    public string PaymentMethod { get; set; } = "CreditCard";
+    public string PaymentMethod { get; set; } = "Card";
 }

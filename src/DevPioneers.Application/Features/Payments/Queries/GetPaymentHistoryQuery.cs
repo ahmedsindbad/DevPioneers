@@ -3,6 +3,7 @@
 // ============================================
 using DevPioneers.Application.Common.Models;
 using DevPioneers.Application.Features.Payments.DTOs;
+using DevPioneers.Domain.Enums;
 using MediatR;
 
 namespace DevPioneers.Application.Features.Payments.Queries;

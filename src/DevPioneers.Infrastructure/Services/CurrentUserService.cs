@@ -95,7 +95,9 @@ public class CurrentUserService : ICurrentUserService
 
     public bool IsInRole(string role)
     {
-        if (string.IsNullOrWhiteSpace(role)) return false;
-        return Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrEmpty(role))
+            return false;
+
+        return _httpContextAccessor.HttpContext?.User?.IsInRole(role) ?? false;
     }
 }

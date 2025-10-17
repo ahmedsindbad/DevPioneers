@@ -36,5 +36,5 @@ public enum PaymentMethod
     /// <summary>
     /// Other payment methods
     /// </summary>
-    Other = 99
+    Other = 6
 }

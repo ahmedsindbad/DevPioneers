@@ -28,7 +28,7 @@ public static class WalletMappings
         {
             Id = transaction.Id,
             WalletId = transaction.WalletId,
-            Type = transaction.Type.ToString(),
+            Type = transaction.Type,
             Amount = transaction.Amount,
             Currency = transaction.Currency,
             BalanceBefore = transaction.BalanceBefore,

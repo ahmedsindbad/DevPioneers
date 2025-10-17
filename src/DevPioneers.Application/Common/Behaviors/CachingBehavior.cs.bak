@@ -1,0 +1,68 @@
+// ============================================
+// File: DevPioneers.Application/Common/Behaviors/CachingBehavior.cs
+// ============================================
+using MediatR;
+using Microsoft.Extensions.Logging;
+using DevPioneers.Application.Common.Interfaces;
+
+namespace DevPioneers.Application.Common.Behaviors;
+
+/// <summary>
+/// MediatR pipeline behavior for caching query results
+/// Only applies to queries that implement ICacheableQuery
+/// </summary>
+public class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : notnull
+{
+    private readonly ICacheService _cacheService;
+    private readonly ILogger<CachingBehavior<TRequest, TResponse>> _logger;
+
+    public CachingBehavior(
+        ICacheService cacheService,
+        ILogger<CachingBehavior<TRequest, TResponse>> logger)
+    {
+        _cacheService = cacheService;
+        _logger = logger;
+    }
+
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
+    {
+        // Only cache if request implements ICacheableQuery
+        if (request is not ICacheableQuery cacheableQuery)
+        {
+            return await next();
+        }
+
+        var cacheKey = cacheableQuery.CacheKey;
+
+        // Try to get from cache
+        var cachedResponse = await _cacheService.GetAsync<TResponse>(cacheKey, cancellationToken);
+        if (cachedResponse != null)
+        {
+            _logger.LogDebug("Cache hit for {CacheKey}", cacheKey);
+            return cachedResponse;
+        }
+
+        // Get from handler
+        var response = await next();
+
+        // Cache the response
+        await _cacheService.SetAsync(cacheKey, response, cacheableQuery.CacheExpiry, cancellationToken);
+
+        _logger.LogDebug("Cached response for {CacheKey}", cacheKey);
+
+        return response;
+    }
+}
+
+/// <summary>
+/// Interface for cacheable queries
+/// </summary>
+public interface ICacheableQuery
+{
+    string CacheKey { get; }
+    TimeSpan? CacheExpiry { get; }
+}

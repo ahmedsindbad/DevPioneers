@@ -80,13 +80,12 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
 
             // Calculate subscription dates
             var startDate = _dateTime.UtcNow;
-            var trialEndDate = subscriptionPlan.TrialDurationDays > 0 ? 
-                startDate.AddDays(subscriptionPlan.TrialDurationDays) : null;
+            DateTime? trialEndDate = subscriptionPlan.TrialDurationDays > 0 ?  startDate.AddDays(subscriptionPlan.TrialDurationDays) : null;
             
             var endDate = subscriptionPlan.BillingCycle switch
             {
                 BillingCycle.Monthly => startDate.AddMonths(1),
-                BillingCycle.Yearly => startDate.AddYears(1),
+                BillingCycle.Annual => startDate.AddYears(1), //Yearly
                 BillingCycle.Weekly => startDate.AddDays(7),
                 _ => startDate.AddMonths(1)
             };
@@ -117,13 +116,12 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
 
                 if (wallet != null)
                 {
-                    wallet.AddPoints(subscriptionPlan.PointsAwarded, 
-                        $"Points awarded for {subscriptionPlan.Name} subscription");
+                    wallet.AddPoints(subscriptionPlan.PointsAwarded);
 
                     var transaction = new WalletTransaction
                     {
                         WalletId = wallet.Id,
-                        Type = TransactionType.PointsCredit,
+                        Type = TransactionType.Credit,
                         Amount = subscriptionPlan.PointsAwarded,
                         Currency = "PTS",
                         BalanceBefore = wallet.Points - subscriptionPlan.PointsAwarded,

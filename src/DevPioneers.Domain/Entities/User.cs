@@ -133,6 +133,11 @@ public class User : AuditableEntity
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     /// <summary>
+    /// Navigation: OTP codes issued for this user (for email/mobile verification / MFA)
+    /// </summary>
+    public virtual ICollection<OtpCode> OtpCodes { get; set; } = new List<OtpCode>();
+
+    /// <summary>
     /// Check if user is active
     /// </summary>
     public bool IsActive() => Status == UserStatus.Active && !IsDeleted;
@@ -201,4 +206,34 @@ public class User : AuditableEntity
     /// Check if account is currently locked (alias for IsLocked)
     /// </summary>
     public bool IsAccountLocked() => IsLocked();
+
+    /// <summary>
+    /// Set and hash user's password securely using BCrypt
+    /// </summary>
+    public void SetPassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            throw new ArgumentException("Password cannot be empty.", nameof(password));
+
+        // Generate salted hash using BCrypt (recommended cost: 12)
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+    }
+
+    /// <summary>
+    /// Generate a secure email verification token and assign expiry date
+    /// </summary>
+    public void GenerateEmailVerificationToken()
+    {
+        // Generate random secure token (using Guid + random salt)
+        var randomBytes = Guid.NewGuid().ToByteArray();
+        var base64Token = Convert.ToBase64String(randomBytes)
+            .Replace("+", "")
+            .Replace("/", "")
+            .Replace("=", "");
+
+        EmailVerificationToken = base64Token;
+        EmailVerified = false;
+        EmailVerifiedAt = null;
+    }
+
 }

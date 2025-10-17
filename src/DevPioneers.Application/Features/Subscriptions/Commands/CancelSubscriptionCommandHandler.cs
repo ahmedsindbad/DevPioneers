@@ -50,7 +50,7 @@ public class CancelSubscriptionCommandHandler : IRequestHandler<CancelSubscripti
             }
 
             // Cancel subscription
-            subscription.Cancel(_dateTime.UtcNow, request.Reason);
+            subscription.Cancel(request.Reason);
 
             await _context.SaveChangesAsync(cancellationToken);
 

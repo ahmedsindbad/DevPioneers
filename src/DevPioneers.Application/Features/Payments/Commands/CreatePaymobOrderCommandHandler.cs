@@ -73,7 +73,7 @@ public class CreatePaymobOrderCommandHandler : IRequestHandler<CreatePaymobOrder
                 Amount = request.Amount,
                 Currency = request.Currency,
                 Status = PaymentStatus.Pending,
-                PaymentMethod = PaymentMethod.CreditCard, // Default to credit card
+                PaymentMethod = PaymentMethod.Card, // Default to credit card
                 Description = request.Description,
                 IpAddress = request.IpAddress,
                 UserAgent = request.UserAgent,
