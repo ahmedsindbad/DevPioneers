@@ -1,5 +1,5 @@
 // ============================================
-// File: DevPioneers.Application/Features/Subscriptions/Queries/GetSubscriptionPlansQuery.cs
+// File: DevPioneers.Application/Features/Subscriptions/Queries/GetExpiringSubscriptionsQuery.cs
 // ============================================
 using DevPioneers.Application.Common.Models;
 using DevPioneers.Application.Features.Subscriptions.DTOs;
@@ -7,5 +7,4 @@ using MediatR;
 
 namespace DevPioneers.Application.Features.Subscriptions.Queries;
 
-public record GetSubscriptionPlansQuery() : IRequest<Result<List<SubscriptionPlanDto>>>;
-
+public record GetExpiringSubscriptionsQuery(int DaysAhead) : IRequest<Result<List<ExpiringSubscriptionDto>>>;

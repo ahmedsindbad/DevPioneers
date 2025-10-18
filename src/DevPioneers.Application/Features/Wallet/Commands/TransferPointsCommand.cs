@@ -7,6 +7,9 @@ using MediatR;
 
 namespace DevPioneers.Application.Features.Wallet.Commands;
 
+/// <summary>
+/// Command to transfer points between wallets
+/// </summary>
 public record TransferPointsCommand(
     int FromUserId,
     int ToUserId,

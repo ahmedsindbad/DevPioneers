@@ -83,16 +83,6 @@ public class Wallet : AuditableEntity
         TotalSpent += amount;
     }
 
-    /// <summary>
-    /// Add points
-    /// </summary>
-    public void AddPoints(int points)
-    {
-        if (points <= 0)
-            throw new ArgumentException("Points must be positive", nameof(points));
-
-        Points += points;
-    }
 
     /// <summary>
     /// Remove points from the wallet (e.g., for admin correction or reward reversal)
@@ -107,21 +97,6 @@ public class Wallet : AuditableEntity
 
         if (Points < points)
             throw new InvalidOperationException($"Cannot remove {points} points. Available points: {Points}.");
-
-        Points -= points;
-    }
-
-
-    /// <summary>
-    /// Deduct points
-    /// </summary>
-    public void DeductPoints(int points)
-    {
-        if (points <= 0)
-            throw new ArgumentException("Points must be positive", nameof(points));
-
-        if (Points < points)
-            throw new InvalidOperationException($"Insufficient points. Available: {Points}, Required: {points}");
 
         Points -= points;
     }
@@ -145,5 +120,49 @@ public class Wallet : AuditableEntity
     /// Get points as Points value object
     /// </summary>
     public Points GetPoints() => new Points(Points);
+
+    public void Credit(decimal amount, string description)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
+
+        Balance += amount;
+        TotalEarned += amount;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Debit(decimal amount, string description)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
+
+        if (Balance < amount)
+            throw new InvalidOperationException("Insufficient balance");
+
+        Balance -= amount;
+        TotalSpent += amount;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void AddPoints(int points)
+    {
+        if (points <= 0)
+            throw new ArgumentException("Points must be greater than zero", nameof(points));
+
+        Points += points;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void DeductPoints(int points)
+    {
+        if (points <= 0)
+            throw new ArgumentException("Points must be greater than zero", nameof(points));
+
+        if (Points < points)
+            throw new InvalidOperationException("Insufficient points");
+
+        Points -= points;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
 }
 

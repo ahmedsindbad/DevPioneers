@@ -1,6 +1,3 @@
-// ============================================
-// File: DevPioneers.Application/DependencyInjection.cs
-// ============================================
 using DevPioneers.Application.Common.Behaviors;
 using FluentValidation;
 using MediatR;
@@ -11,12 +8,9 @@ namespace DevPioneers.Application;
 
 public static class DependencyInjection
 {
-    /// <summary>
-    /// Add Application layer services to DI container
-    /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        // Register MediatR
+        // ✅ الطريقة الصحيحة لـ MediatR 12.x مع .NET 9
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());

@@ -90,11 +90,7 @@ public class GetUserWalletsQueryHandler : IRequestHandler<GetUserWalletsQuery, R
                     TotalSpent = w.TotalSpent,
                     IsActive = w.IsActive,
                     CreatedAtUtc = w.CreatedAtUtc,
-                    UpdatedAtUtc = w.UpdatedAtUtc,
-                    // Include user info for admin
-                    UserEmail = w.User.Email,
-                    UserFullName = w.User.FullName,
-                    UserMobile = w.User.Mobile
+                    UpdatedAtUtc = w.UpdatedAtUtc
                 })
                 .ToListAsync(cancellationToken);
 
