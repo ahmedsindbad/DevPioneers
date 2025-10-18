@@ -11,4 +11,6 @@ public class JwtSettings
     public int AccessTokenExpirationMinutes { get; set; } = 15;
     public int RefreshTokenExpirationDays { get; set; } = 30;
     public string EncryptionKey { get; set; } = string.Empty; // For AES encryption
+    public int ClockSkewMinutes { get; set; } = 5; 
+
 }
