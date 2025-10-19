@@ -56,5 +56,6 @@ public enum AuditAction
     /// <summary>
     /// Subscription change
     /// </summary>
-    Subscription = 10
+    Subscription = 10,
+    EmailVerificationSent = 11
 }

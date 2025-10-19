@@ -341,4 +341,98 @@ public class MockEmailService : IEmailService
             body
         );
     }
+
+
+     // ============================================
+    // File: DevPioneers.Infrastructure/Services/MockEmailService.cs - Additional Methods
+    // Add these methods to the existing MockEmailService class
+    // ============================================
+
+    /// <summary>
+    /// Send email verification link
+    /// </summary>
+    public async Task<bool> SendEmailVerificationAsync(string toEmail, string fullName, string verificationUrl, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var emailBody = new StringBuilder();
+            emailBody.AppendLine($"Dear {fullName},");
+            emailBody.AppendLine();
+            emailBody.AppendLine("Thank you for registering with DevPioneers! 🎉");
+            emailBody.AppendLine();
+            emailBody.AppendLine("To complete your registration and activate your account, please verify your email address by clicking the link below:");
+            emailBody.AppendLine();
+            emailBody.AppendLine($"Verification Link: {verificationUrl}");
+            emailBody.AppendLine();
+            emailBody.AppendLine("This link will expire in 24 hours for security reasons.");
+            emailBody.AppendLine();
+            emailBody.AppendLine("If you didn't create an account with us, you can safely ignore this email.");
+            emailBody.AppendLine();
+            emailBody.AppendLine("Best regards,");
+            emailBody.AppendLine("DevPioneers Team");
+
+            LogEmail("Email Verification", toEmail, "Verify your email address - DevPioneers", emailBody.ToString());
+
+            // Simulate async operation
+            await Task.Delay(150, cancellationToken);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification email to {Email}", toEmail);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Send mobile verification OTP
+    /// </summary>
+    public async Task<bool> SendMobileVerificationOtpAsync(string mobile, string otpCode, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var smsBody = new StringBuilder();
+            smsBody.AppendLine($"DevPioneers Verification Code: {otpCode}");
+            smsBody.AppendLine();
+            smsBody.AppendLine("Use this code to verify your mobile number.");
+            smsBody.AppendLine("Code expires in 10 minutes.");
+            smsBody.AppendLine();
+            smsBody.AppendLine("If you didn't request this, ignore this message.");
+
+            // Log SMS (in production, use real SMS service)
+            LogSms("Mobile Verification OTP", mobile, smsBody.ToString());
+
+            // Simulate async operation
+            await Task.Delay(100, cancellationToken);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification SMS to {Mobile}", mobile);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Log SMS for development (helper method)
+    /// </summary>
+    private void LogSms(string purpose, string mobile, string body)
+    {
+        var logEntry = new StringBuilder();
+        logEntry.AppendLine("=".PadRight(80, '='));
+        logEntry.AppendLine($"📱 SMS SERVICE - {purpose.ToUpper()}");
+        logEntry.AppendLine("=".PadRight(80, '='));
+        logEntry.AppendLine($"To: {mobile}");
+        logEntry.AppendLine($"Sent: {_dateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        logEntry.AppendLine("-".PadRight(80, '-'));
+        logEntry.AppendLine(body);
+        logEntry.AppendLine("=".PadRight(80, '='));
+
+        _logger.LogInformation("SMS Sent:\n{SmsContent}", logEntry.ToString());
+
+        // In development, also write to console for visibility
+        Console.WriteLine(logEntry.ToString());
+    }
 }

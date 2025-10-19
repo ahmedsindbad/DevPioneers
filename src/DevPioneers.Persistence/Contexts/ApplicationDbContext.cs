@@ -8,6 +8,7 @@ using DevPioneers.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using System.Linq.Expressions;
+using DevPioneers.Persistence.Configurations;
 
 namespace DevPioneers.Persistence.Contexts;
 
@@ -77,6 +78,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfiguration(new OtpCodeConfiguration());
 
         // Apply all entity configurations from current assembly
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

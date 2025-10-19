@@ -53,4 +53,18 @@ public interface IEmailService
     /// Send bulk emails to multiple recipients
     /// </summary>
     Task<int> SendBulkEmailsAsync(List<string> toEmails, string subject, string body, bool isHtml = false, CancellationToken cancellationToken = default);
+    // ============================================
+    // File: DevPioneers.Application/Common/Interfaces/IEmailService.cs - Additional Methods
+    // Add these methods to the existing IEmailService interface
+    // ============================================
+
+    /// <summary>
+    /// Send email verification link
+    /// </summary>
+    Task<bool> SendEmailVerificationAsync(string toEmail, string fullName, string verificationUrl, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Send mobile verification OTP
+    /// </summary>
+    Task<bool> SendMobileVerificationOtpAsync(string mobile, string otpCode, CancellationToken cancellationToken = default);
 }

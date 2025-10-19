@@ -46,6 +46,9 @@ public class User : AuditableEntity
     /// Mobile verification date
     /// </summary>
     public DateTime? MobileVerifiedAt { get; set; }
+    public string? MobileVerificationToken { get; set; }
+    public DateTime? MobileVerificationTokenExpiresAt { get; set; }
+
 
     /// <summary>
     /// Hashed password
@@ -106,6 +109,28 @@ public class User : AuditableEntity
     /// Email verification token
     /// </summary>
     public string? EmailVerificationToken { get; set; }
+    public string? RegistrationIpAddress { get; set; }
+    public DateTime? EmailVerificationTokenExpiresAt { get; set; }
+
+/// <summary>
+/// Last failed login attempt
+/// </summary>
+public DateTime? LastFailedLoginUtc { get; set; }
+
+/// <summary>
+/// Last login IP address
+/// </summary>
+public string? LastLoginIpAddress { get; set; }
+
+/// <summary>
+/// Account locked until (for failed login attempts)
+/// </summary>
+public DateTime? LockedUntilUtc { get; set; }
+
+/// <summary>
+/// Navigation property for OTP codes
+/// </summary>
+public virtual ICollection<OtpCode> OtpCodes { get; set; } = new List<OtpCode>();
 
     /// <summary>
     /// Navigation: User roles
@@ -131,11 +156,6 @@ public class User : AuditableEntity
     /// Navigation: Refresh tokens
     /// </summary>
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
-
-    /// <summary>
-    /// Navigation: OTP codes issued for this user (for email/mobile verification / MFA)
-    /// </summary>
-    public virtual ICollection<OtpCode> OtpCodes { get; set; } = new List<OtpCode>();
 
     /// <summary>
     /// Check if user is active
@@ -195,12 +215,12 @@ public class User : AuditableEntity
     /// <summary>
     /// Record successful login
     /// </summary>
-    public void RecordSuccessfulLogin(string? ipAddress = null)
-    {
-        ResetFailedLoginAttempts();
-        LastLoginAt = DateTime.UtcNow;
-        LastLoginIp = ipAddress;
-    }
+    // public void RecordSuccessfulLogin(string? ipAddress = null)
+    // {
+    //     ResetFailedLoginAttempts();
+    //     LastLoginAt = DateTime.UtcNow;
+    //     LastLoginIp = ipAddress;
+    // }
 
     /// <summary>
     /// Check if account is currently locked (alias for IsLocked)
@@ -222,18 +242,89 @@ public class User : AuditableEntity
     /// <summary>
     /// Generate a secure email verification token and assign expiry date
     /// </summary>
+    // public void GenerateEmailVerificationToken()
+    // {
+    //     // Generate random secure token (using Guid + random salt)
+    //     var randomBytes = Guid.NewGuid().ToByteArray();
+    //     var base64Token = Convert.ToBase64String(randomBytes)
+    //         .Replace("+", "")
+    //         .Replace("/", "")
+    //         .Replace("=", "");
+
+    //     EmailVerificationToken = base64Token;
+    //     EmailVerified = false;
+    //     EmailVerifiedAt = null;
+    // }
+
+    // ============================================
+    // File: DevPioneers.Domain/Entities/User.cs - Additional Methods
+    // Add these methods to the existing User entity
+    // ============================================
+
+    /// <summary>
+    /// Generate email verification token
+    /// </summary>
     public void GenerateEmailVerificationToken()
     {
-        // Generate random secure token (using Guid + random salt)
-        var randomBytes = Guid.NewGuid().ToByteArray();
-        var base64Token = Convert.ToBase64String(randomBytes)
-            .Replace("+", "")
-            .Replace("/", "")
-            .Replace("=", "");
-
-        EmailVerificationToken = base64Token;
-        EmailVerified = false;
-        EmailVerifiedAt = null;
+        EmailVerificationToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"); // 64 characters
+        EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24); // 24 hours expiry
     }
 
+    /// <summary>
+    /// Verify email address
+    /// </summary>
+    public void VerifyEmail()
+    {
+        EmailVerified = true;
+        EmailVerifiedAt = DateTime.UtcNow;
+        EmailVerificationToken = null;
+        EmailVerificationTokenExpiresAt = null;
+    }
+
+    /// <summary>
+    /// Generate mobile verification token
+    /// </summary>
+    public void GenerateMobileVerificationToken()
+    {
+        MobileVerificationToken = Guid.NewGuid().ToString("N");
+        MobileVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(1); // 1 hour expiry
+    }
+
+    /// <summary>
+    /// Verify mobile number
+    /// </summary>
+    public void VerifyMobile()
+    {
+        MobileVerified = true;
+        MobileVerifiedAt = DateTime.UtcNow;
+        MobileVerificationToken = null;
+        MobileVerificationTokenExpiresAt = null;
+    }
+
+    /// <summary>
+    /// Record successful login
+    /// </summary>
+    public void RecordSuccessfulLogin(string? ipAddress = null)
+    {
+        LastLoginAt = DateTime.UtcNow;
+        FailedLoginAttempts = 0;
+        LastLoginIp = ipAddress;
+    }
+
+    /// <summary>
+    /// Record failed login attempt
+    /// </summary>
+    public void RecordFailedLogin(string? ipAddress = null)
+    {
+        FailedLoginAttempts++;
+        LastLoginAt = DateTime.UtcNow;
+        LastLoginIp = ipAddress;
+    }
+
+    /// <summary>
+    /// Check if account is locked due to failed attempts
+    /// </summary>
+    public bool IsLockedOut => FailedLoginAttempts >= 5 &&
+                              LastLoginAt.HasValue &&
+                              LastLoginAt.Value.AddMinutes(15) > DateTime.UtcNow;
 }

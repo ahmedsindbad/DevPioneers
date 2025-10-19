@@ -1,20 +1,15 @@
 // ============================================
 // File: DevPioneers.Application/Features/Auth/Commands/SendOtpCommand.cs
+// Updated with OtpPurpose enum
 // ============================================
 using DevPioneers.Application.Common.Models;
+using DevPioneers.Domain.Enums;
 using MediatR;
 
 namespace DevPioneers.Application.Features.Auth.Commands;
 
 public record SendOtpCommand(
     string EmailOrMobile,
-    OtpPurpose Purpose = OtpPurpose.TwoFactorAuth
-) : IRequest<Result<string>>; // Returns masked email/mobile
-
-public enum OtpPurpose
-{
-    TwoFactorAuth,
-    EmailVerification,
-    PasswordReset,
-    MobileVerification
-}
+    OtpPurpose Purpose = OtpPurpose.Login,
+    string? IpAddress = null
+) : IRequest<Result<string>>;

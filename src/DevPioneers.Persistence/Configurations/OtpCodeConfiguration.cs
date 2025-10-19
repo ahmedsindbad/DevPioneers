@@ -11,57 +11,83 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
 {
     public void Configure(EntityTypeBuilder<OtpCode> builder)
     {
-        // Table name
         builder.ToTable("OtpCodes");
 
-        // Primary key
         builder.HasKey(o => o.Id);
 
-        // Properties
-        builder.Property(o => o.UserId)
+        builder.Property(o => o.Id)
+            .IsRequired()
+            .ValueGeneratedOnAdd();
+
+        builder.Property(o => o.Mobile)
+            .HasMaxLength(15)
             .IsRequired();
 
+        builder.Property(o => o.Email)
+            .HasMaxLength(320)
+            .IsRequired(false);
+
         builder.Property(o => o.Code)
-            .IsRequired()
-            .HasMaxLength(10); // 6 digits usually, but allow some flexibility
+            .HasMaxLength(100) // Hashed code can be longer
+            .IsRequired();
 
         builder.Property(o => o.Purpose)
+            .HasMaxLength(50)
             .IsRequired()
-            .HasMaxLength(50);
+            .HasDefaultValue("Login");
 
         builder.Property(o => o.ExpiresAt)
             .IsRequired();
 
-        // builder.Property(o => o.IsVerified)
-        //     .HasDefaultValue(false);
-
         builder.Property(o => o.VerifiedAt)
             .IsRequired(false);
 
-        builder.Property(o => o.IpAddress)
-            .HasMaxLength(45) // IPv6 support
-            .IsRequired(false);
-
         builder.Property(o => o.Attempts)
+            .IsRequired()
             .HasDefaultValue(0);
 
-        // Indexes for performance
-        builder.HasIndex(o => o.UserId)
-            .HasDatabaseName("IX_OtpCodes_UserId");
+        builder.Property(o => o.MaxAttempts)
+            .IsRequired()
+            .HasDefaultValue(3);
 
-        builder.HasIndex(o => new { o.Code, o.UserId })
-            .HasDatabaseName("IX_OtpCodes_Code_UserId");
+        builder.Property(o => o.IpAddress)
+            .HasMaxLength(45)
+            .IsRequired(false);
+
+        builder.Property(o => o.CreatedAtUtc)
+            .IsRequired();
+
+        builder.Property(o => o.UpdatedAtUtc)
+            .IsRequired(false);
+
+        // Foreign key to User (nullable for registration flow)
+        builder.HasOne(o => o.User)
+            .WithMany(u => u.OtpCodes)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
+
+        // Indexes for performance
+        builder.HasIndex(o => o.Mobile)
+            .HasDatabaseName("IX_OtpCodes_Mobile");
+
+        builder.HasIndex(o => o.Email)
+            .HasDatabaseName("IX_OtpCodes_Email");
+
+        builder.HasIndex(o => o.Code)
+            .HasDatabaseName("IX_OtpCodes_Code");
 
         builder.HasIndex(o => o.ExpiresAt)
             .HasDatabaseName("IX_OtpCodes_ExpiresAt");
 
-        builder.HasIndex(o => new { o.UserId, o.VerifiedAt, o.ExpiresAt })
-            .HasDatabaseName("IX_OtpCodes_UserId_VerifiedAt_ExpiresAt");
+        builder.HasIndex(o => new { o.Mobile, o.Purpose, o.ExpiresAt })
+            .HasDatabaseName("IX_OtpCodes_Mobile_Purpose_ExpiresAt");
 
-        // Relationships
-        builder.HasOne(o => o.User)
-            .WithMany(u => u.OtpCodes)
-            .HasForeignKey(o => o.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(o => new { o.Email, o.Purpose, o.ExpiresAt })
+            .HasDatabaseName("IX_OtpCodes_Email_Purpose_ExpiresAt");
+
+        // Add computed columns or constraints if needed
+        builder.HasCheckConstraint("CK_OtpCodes_EmailOrMobile", 
+            "([Email] IS NOT NULL) OR ([Mobile] IS NOT NULL)");
     }
 }

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using DevPioneers.Infrastructure.Configurations;
+using DevPioneers.Domain.Enums;
 
 namespace DevPioneers.Api.Controllers;
 
@@ -77,7 +78,7 @@ public class AuthController : ControllerBase
 
             if (!result.IsSuccess)
             {
-                _logger.LogWarning("Login failed for {EmailOrMobile}: {Error}", 
+                _logger.LogWarning("Login failed for {EmailOrMobile}: {Error}",
                     request.EmailOrMobile, result.Errors);
                 return Unauthorized(result.Errors);
             }
@@ -109,6 +110,219 @@ public class AuthController : ControllerBase
         }
     }
 
+
+    /// <summary>
+    /// User registration (signup) with email/mobile verification
+    /// </summary>
+    /// <param name="request">Registration details</param>
+    /// <returns>Authentication response for newly registered user</returns>
+    [HttpPost("signup")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Signup([FromBody] RegisterDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var command = new RegisterCommand(
+                FullName: request.FullName,
+                Email: request.Email,
+                Mobile: request.Mobile,
+                Password: request.Password,
+                IpAddress: GetClientIpAddress(),
+                UserAgent: GetUserAgent()
+            );
+
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Registration failed for {Email}: {Error}",
+                    request.Email, result.Errors);
+
+                // Check if it's a duplicate error (409 Conflict)
+                if (result.Errors.Any(e => e.Contains("already registered") || e.Contains("already exists")))
+                {
+                    return Conflict(result.Errors);
+                }
+
+                return BadRequest(result.Errors);
+            }
+
+            var authResponse = result.Data!;
+
+            // Send OTP for email/mobile verification if required
+            if (!string.IsNullOrEmpty(request.Mobile))
+            {
+                try
+                {
+                    var sendOtpCommand = new SendOtpCommand(
+                        EmailOrMobile: request.Mobile,
+                        Purpose: OtpPurpose.Registration
+                    );
+
+                    await _mediator.Send(sendOtpCommand);
+
+                    _logger.LogInformation("Mobile verification OTP sent to new user {UserId}", authResponse.UserId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send mobile OTP for new user {UserId}", authResponse.UserId);
+                    // Don't fail registration if OTP sending fails
+                }
+            }
+
+            // For new registrations, typically we don't auto-login
+            // User needs to verify email/mobile first
+            authResponse.RequiresEmailVerification = true;
+
+            // Only generate tokens if email verification is not required
+            // In most cases, you'd want users to verify email first
+            var requireEmailVerification = true; // Set based on your business logic
+
+            if (!requireEmailVerification)
+            {
+                await GenerateAndSetTokensAsync(authResponse);
+            }
+
+            _logger.LogInformation("User {UserId} registered successfully with email {Email}",
+                authResponse.UserId, authResponse.Email);
+
+            // Return 201 Created for successful registration
+            return Created($"/api/auth/profile", new
+            {
+                message = "Registration successful! Please check your email for verification instructions.",
+                user = authResponse,
+                nextSteps = new[]
+                {
+                requireEmailVerification ? "Verify your email address" : null,
+                !string.IsNullOrEmpty(request.Mobile) ? "Verify your mobile number using the OTP sent" : null
+            }.Where(step => !string.IsNullOrEmpty(step)).ToArray()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Registration error for {Email}", request.Email);
+            return StatusCode(500, "An error occurred during registration");
+        }
+    }
+
+    /// <summary>
+    /// Verify email address using verification token
+    /// </summary>
+    /// <param name="request">Email verification request</param>
+    /// <returns>Verification result</returns>
+    [HttpPost("verify-email")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var command = new VerifyEmailCommand(
+                Token: request.Token,
+                IpAddress: GetClientIpAddress()
+            );
+
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Email verification failed for token {Token}: {Error}",
+                    request.Token, result.Errors);
+                return BadRequest(result.Errors);
+            }
+
+            _logger.LogInformation("Email verified successfully for user");
+
+            return Ok(new
+            {
+                message = "Email verified successfully! You can now login to your account.",
+                verified = true,
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Email verification error for token {Token}", request.Token);
+            return StatusCode(500, "An error occurred during email verification");
+        }
+    }
+
+    /// <summary>
+    /// Resend email verification link
+    /// </summary>
+    /// <param name="request">Resend verification request</param>
+    /// <returns>Success message</returns>
+    [HttpPost("resend-verification")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResendEmailVerification([FromBody] ResendVerificationDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var command = new ResendEmailVerificationCommand(
+                Email: request.Email,
+                IpAddress: GetClientIpAddress()
+            );
+
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Resend verification failed for {Email}: {Error}",
+                    request.Email, result.Errors);
+                return BadRequest(result.Errors);
+            }
+
+            _logger.LogInformation("Verification email resent to {Email}", request.Email);
+
+            return Ok(new
+            {
+                message = "Verification email sent successfully! Please check your inbox.",
+                email = MaskEmail(request.Email),
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Resend verification error for {Email}", request.Email);
+            return StatusCode(500, "An error occurred while sending verification email");
+        }
+    }
+
+    /// <summary>
+    /// Helper method to mask email for security
+    /// </summary>
+    private static string MaskEmail(string email)
+    {
+        var parts = email.Split('@');
+        if (parts.Length != 2) return email;
+
+        var username = parts[0];
+        var domain = parts[1];
+
+        if (username.Length <= 2)
+            return $"{username[0]}***@{domain}";
+
+        return $"{username[0]}***{username[^1]}@{domain}";
+    }
+
     /// <summary>
     /// Refresh JWT access token using refresh token
     /// </summary>
@@ -127,7 +341,7 @@ public class AuthController : ControllerBase
             }
 
             var refreshToken = request.RefreshToken ?? GetRefreshTokenFromCookies();
-            
+
             if (string.IsNullOrEmpty(refreshToken))
             {
                 return Unauthorized("Refresh token is required");
@@ -191,7 +405,7 @@ public class AuthController : ControllerBase
 
             if (!result.IsSuccess)
             {
-                _logger.LogWarning("OTP verification failed for user {UserId}: {Error}", 
+                _logger.LogWarning("OTP verification failed for user {UserId}: {Error}",
                     request.UserId, result.Errors);
                 return Unauthorized(result.Errors);
             }
@@ -238,7 +452,7 @@ public class AuthController : ControllerBase
 
             if (!result.IsSuccess)
             {
-                _logger.LogWarning("OTP send failed for {EmailOrMobile}: {Error}", 
+                _logger.LogWarning("OTP send failed for {EmailOrMobile}: {Error}",
                     request.EmailOrMobile, result.Errors);
                 return BadRequest(result.Errors);
             }
@@ -269,12 +483,12 @@ public class AuthController : ControllerBase
         try
         {
             var refreshToken = GetRefreshTokenFromCookies();
-            
+
             if (!string.IsNullOrEmpty(refreshToken))
             {
                 await _refreshTokenService.RevokeRefreshTokenAsync(
-                    refreshToken, 
-                    GetClientIpAddress(), 
+                    refreshToken,
+                    GetClientIpAddress(),
                     "User logout"
                 );
             }
@@ -305,10 +519,10 @@ public class AuthController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            
+
             await _refreshTokenService.RevokeAllUserRefreshTokensAsync(
-                userId, 
-                GetClientIpAddress(), 
+                userId,
+                GetClientIpAddress(),
                 "User logout from all devices"
             );
 
@@ -338,7 +552,7 @@ public class AuthController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            
+
             // You can create GetUserProfileQuery if needed
             // For now, return basic info from JWT claims
             var userProfile = new UserProfileDto
@@ -362,6 +576,171 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Verify mobile number using OTP code
+    /// </summary>
+    /// <param name="request">Mobile verification request</param>
+    /// <returns>Verification result</returns>
+    [HttpPost("verify-mobile")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyMobile([FromBody] VerifyMobileDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var command = new VerifyMobileCommand(
+                Mobile: request.Mobile,
+                OtpCode: request.OtpCode,
+                IpAddress: GetClientIpAddress()
+            );
+
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Mobile verification failed for {Mobile}: {Error}",
+                    request.Mobile, result.Errors);
+                return BadRequest(result.Errors);
+            }
+
+            _logger.LogInformation("Mobile verified successfully for {Mobile}", request.Mobile);
+
+            return Ok(new
+            {
+                message = "Mobile number verified successfully!",
+                mobile = MaskMobile(request.Mobile),
+                verified = true,
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Mobile verification error for {Mobile}", request.Mobile);
+            return StatusCode(500, "An error occurred during mobile verification");
+        }
+    }
+
+    /// <summary>
+    /// Send OTP to mobile number for verification
+    /// </summary>
+    /// <param name="request">Mobile OTP request</param>
+    /// <returns>Success message with masked mobile</returns>
+    [HttpPost("send-mobile-otp")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SendMobileOtp([FromBody] SendMobileOtpDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var command = new SendOtpCommand(
+                EmailOrMobile: request.Mobile,
+                Purpose: Enum.Parse<OtpPurpose>(request.Purpose)
+            );
+
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Mobile OTP send failed for {Mobile}: {Error}",
+                    request.Mobile, result.Errors);
+                return BadRequest(result.Errors);
+            }
+
+            _logger.LogInformation("Mobile OTP sent successfully to {Mobile}", request.Mobile);
+
+            return Ok(new
+            {
+                message = "OTP sent successfully to your mobile number!",
+                mobile = MaskMobile(request.Mobile),
+                expiresInMinutes = 10,
+                purpose = request.Purpose,
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Send mobile OTP error for {Mobile}", request.Mobile);
+            return StatusCode(500, "An error occurred while sending OTP");
+        }
+    }
+
+    /// <summary>
+    /// Check if email or mobile is already registered
+    /// </summary>
+    /// <param name="emailOrMobile">Email or mobile to check</param>
+    /// <returns>Availability status</returns>
+    [HttpGet("check-availability")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CheckAvailability([FromQuery] string emailOrMobile)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(emailOrMobile))
+            {
+                return BadRequest("Email or mobile parameter is required");
+            }
+
+            var command = new CheckUserExistsCommand(EmailOrMobile: emailOrMobile);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Check availability failed for {EmailOrMobile}: {Error}",
+                    emailOrMobile, result.Errors);
+                return BadRequest(result.Errors);
+            }
+
+            var exists = result.Data;
+            var isEmail = emailOrMobile.Contains('@');
+
+            return Ok(new
+            {
+                available = !exists,
+                type = isEmail ? "email" : "mobile",
+                value = isEmail ? MaskEmail(emailOrMobile) : MaskMobile(emailOrMobile),
+                message = exists
+                    ? $"This {(isEmail ? "email" : "mobile number")} is already registered"
+                    : $"This {(isEmail ? "email" : "mobile number")} is available",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Check availability error for {EmailOrMobile}", emailOrMobile);
+            return StatusCode(500, "An error occurred while checking availability");
+        }
+    }
+
+    /// <summary>
+    /// Helper method to mask mobile number for security
+    /// </summary>
+    private static string MaskMobile(string mobile)
+    {
+        if (string.IsNullOrWhiteSpace(mobile) || mobile.Length < 4)
+            return mobile;
+
+        mobile = mobile.Trim().Replace(" ", "").Replace("-", "");
+
+        if (mobile.StartsWith("+20"))
+            mobile = mobile[3..];
+
+        if (mobile.Length >= 11)
+            return $"{mobile[..3]}***{mobile[^2..]}";
+
+        return $"{mobile[..2]}***{mobile[^1]}";
+    }
+
     #region Private Helper Methods
 
     /// <summary>
@@ -370,13 +749,13 @@ public class AuthController : ControllerBase
     private async Task GenerateAndSetTokensAsync(AuthResponseDto authResponse)
     {
         // Generate access token
-        var user = new Domain.Entities.User 
-        { 
-            Id = authResponse.UserId, 
+        var user = new Domain.Entities.User
+        {
+            Id = authResponse.UserId,
             Email = authResponse.Email,
             FullName = authResponse.FullName
         };
-        
+
         authResponse.AccessToken = _jwtTokenService.GenerateAccessToken(user, authResponse.Roles);
         authResponse.AccessTokenExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
