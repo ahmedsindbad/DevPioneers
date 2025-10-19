@@ -15,6 +15,11 @@ using System.Net;
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.SqlServer;
+using DevPioneers.Api.Extensions;
+using DevPioneers.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using MediatR;
+using DevPioneers.Application.Common.Behaviors;
 
 // Force TLS 1.2 or higher for all connections
 #pragma warning disable SYSLIB0014 // Type or member is obsolete
@@ -85,6 +90,13 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+
+// Replace the existing authorization configuration with enhanced version
+// Replace basic AuthorizationBehavior with enhanced version
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(EnhancedAuthorizationBehavior<,>));
+
+// Register custom authorization handlers
+builder.Services.AddScoped<IAuthorizationHandler, OwnerOrAdminHandler>();
 // ============================================
 // Add Application Layer (MediatR, Validation, Behaviors)
 // ============================================
@@ -199,7 +211,7 @@ app.Use(async (context, next) =>
 });
 
 // Use HTTPS Redirection
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 // Use CORS
 var corsPolicy = app.Environment.IsProduction() ? "Production" : "AllowAll";
@@ -218,7 +230,7 @@ app.UseMiddleware<JwtMiddleware>();
 
 // Add Authorization middleware
 app.UseAuthorization();
-
+app.UseAuthorizationLogging();
 // ============================================
 // Hangfire Dashboard with Authentication
 // ============================================
