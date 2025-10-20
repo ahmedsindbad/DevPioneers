@@ -33,9 +33,9 @@ public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Resul
         _currentUser = currentUser;
     }
 
-    public async Task<Result<int>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+    public Task<Result<int>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
         // Implementation here...
-        return Result<int>.Success(1);
+        return Task.FromResult(Result<int>.Success(1));
     }
 }

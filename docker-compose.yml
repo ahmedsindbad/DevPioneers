@@ -49,6 +49,47 @@ services:
       retries: 5
 
   # ========================================
+  # SQL Server Exporter for Prometheus
+  # ========================================
+  sqlserver-exporter:
+    image: awaragi/prometheus-mssql-exporter:latest
+    container_name: devpioneers-sqlserver-exporter
+    hostname: sqlserver-exporter
+    ports:
+      - "9121:4000"
+    environment:
+      - SERVER=sqlserver
+      - PORT=1433
+      - USERNAME=sa
+      - PASSWORD=StrongP@ssword123!
+      - DEBUG=app
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - devpioneers-network
+    restart: unless-stopped
+
+  # ========================================
+  # Redis Exporter for Prometheus
+  # ========================================
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: devpioneers-redis-exporter
+    hostname: redis-exporter
+    ports:
+      - "9122:9121"
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=RedisP@ssword123
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - devpioneers-network
+    restart: unless-stopped
+
+  # ========================================
   # DevPioneers API
   # ========================================
   api:

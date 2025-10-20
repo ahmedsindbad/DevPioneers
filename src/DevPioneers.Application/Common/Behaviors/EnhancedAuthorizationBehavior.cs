@@ -120,10 +120,10 @@ public class EnhancedAuthorizationBehavior<TRequest, TResponse> : IPipelineBehav
     /// <summary>
     /// Check role-based authorization
     /// </summary>
-    private async Task CheckRoleAuthorization(RequireAuthorizationAttribute attribute, string requestName)
+    private Task CheckRoleAuthorization(RequireAuthorizationAttribute attribute, string requestName)
     {
         if (string.IsNullOrEmpty(attribute.Roles))
-            return;
+            return Task.CompletedTask;
 
         var requiredRoles = attribute.Roles.Split(',', StringSplitOptions.RemoveEmptyEntries)
                                          .Select(r => r.Trim())
@@ -145,69 +145,75 @@ public class EnhancedAuthorizationBehavior<TRequest, TResponse> : IPipelineBehav
 
         if (!hasAccess)
         {
-            _logger.LogWarning("Access denied to {RequestName} for user {UserId}. Required roles: {RequiredRoles}, User roles: {UserRoles}", 
+            _logger.LogWarning("Access denied to {RequestName} for user {UserId}. Required roles: {RequiredRoles}, User roles: {UserRoles}",
                 requestName, _currentUserService.UserId, string.Join(", ", requiredRoles), string.Join(", ", userRoles));
-            
+
             throw new ForbiddenException($"Access denied. Required roles: {string.Join(" or ", requiredRoles)}");
         }
 
-        _logger.LogDebug("Role authorization successful for {RequestName}. User roles: {UserRoles}", 
+        _logger.LogDebug("Role authorization successful for {RequestName}. User roles: {UserRoles}",
             requestName, string.Join(", ", userRoles));
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Check permission-based authorization
     /// </summary>
-    private async Task CheckPermissionAuthorization(RequirePermissionAttribute attribute, string requestName)
+    private Task CheckPermissionAuthorization(RequirePermissionAttribute attribute, string requestName)
     {
         // This would typically check against a permissions system
         // For now, we'll implement basic permission checks based on roles
         var userRoles = _currentUserService.Roles.ToList();
-        
+
         var hasPermission = attribute.RequireAllPermissions
             ? attribute.Permissions.All(p => HasPermission(p, userRoles))
             : attribute.Permissions.Any(p => HasPermission(p, userRoles));
 
         if (!hasPermission)
         {
-            _logger.LogWarning("Permission denied to {RequestName} for user {UserId}. Required permissions: {RequiredPermissions}", 
+            _logger.LogWarning("Permission denied to {RequestName} for user {UserId}. Required permissions: {RequiredPermissions}",
                 requestName, _currentUserService.UserId, string.Join(", ", attribute.Permissions));
-            
+
             throw new ForbiddenException($"Access denied. Required permissions: {string.Join(" and ", attribute.Permissions)}");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Check resource-specific authorization
     /// </summary>
-    private async Task CheckResourceAuthorization(RequireResourceAccessAttribute attribute, string requestName)
+    private Task CheckResourceAuthorization(RequireResourceAccessAttribute attribute, string requestName)
     {
         // Resource-based authorization logic
         var userRoles = _currentUserService.Roles.ToList();
-        
-        bool hasResourceAccess = attribute.Actions.All(action => 
+
+        bool hasResourceAccess = attribute.Actions.All(action =>
             HasResourceAccess(attribute.ResourceType, action, userRoles));
 
         if (!hasResourceAccess)
         {
-            _logger.LogWarning("Resource access denied to {RequestName} for user {UserId}. Resource: {ResourceType}, Actions: {Actions}", 
+            _logger.LogWarning("Resource access denied to {RequestName} for user {UserId}. Resource: {ResourceType}, Actions: {Actions}",
                 requestName, _currentUserService.UserId, attribute.ResourceType, string.Join(", ", attribute.Actions));
-            
+
             throw new ForbiddenException($"Access denied to {attribute.ResourceType} resource for actions: {string.Join(", ", attribute.Actions)}");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Check ownership-based authorization
     /// </summary>
-    private async Task CheckOwnershipAuthorization(TRequest request, RequireOwnershipAttribute attribute, string requestName)
+    private Task CheckOwnershipAuthorization(TRequest request, RequireOwnershipAttribute attribute, string requestName)
     {
         var requestType = request.GetType();
         var userIdProperty = requestType.GetProperty(attribute.UserIdPropertyName);
 
         if (userIdProperty == null)
         {
-            _logger.LogError("Property {PropertyName} not found in {RequestType} for ownership check", 
+            _logger.LogError("Property {PropertyName} not found in {RequestType} for ownership check",
                 attribute.UserIdPropertyName, requestType.Name);
             throw new ForbiddenException($"Cannot verify ownership: property {attribute.UserIdPropertyName} not found");
         }
@@ -220,12 +226,14 @@ public class EnhancedAuthorizationBehavior<TRequest, TResponse> : IPipelineBehav
             // Allow Admin to bypass ownership checks
             if (!_currentUserService.IsInRole("Admin"))
             {
-                _logger.LogWarning("Ownership check failed for {RequestName}. Resource UserId: {ResourceUserId}, Current UserId: {CurrentUserId}", 
+                _logger.LogWarning("Ownership check failed for {RequestName}. Resource UserId: {ResourceUserId}, Current UserId: {CurrentUserId}",
                     requestName, resourceUserId, currentUserId);
-                
+
                 throw new ForbiddenException("Access denied. You can only access your own resources");
             }
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -283,7 +291,7 @@ public class EnhancedAuthorizationBehavior<TRequest, TResponse> : IPipelineBehav
     /// <summary>
     /// Check policy-based authorization
     /// </summary>
-    private async Task CheckPolicyAuthorization(RequirePolicyAttribute attribute, string requestName)
+    private Task CheckPolicyAuthorization(RequirePolicyAttribute attribute, string requestName)
     {
         // This would integrate with ASP.NET Core's policy system
         // For now, implement basic policy checks
@@ -291,11 +299,13 @@ public class EnhancedAuthorizationBehavior<TRequest, TResponse> : IPipelineBehav
 
         if (!hasPolicy)
         {
-            _logger.LogWarning("Policy access denied to {RequestName} for user {UserId}. Required policy: {Policy}", 
+            _logger.LogWarning("Policy access denied to {RequestName} for user {UserId}. Required policy: {Policy}",
                 requestName, _currentUserService.UserId, attribute.Policy);
-            
+
             throw new ForbiddenException($"Access denied. Required policy: {attribute.Policy}");
         }
+
+        return Task.CompletedTask;
     }
 
     #region Helper Methods

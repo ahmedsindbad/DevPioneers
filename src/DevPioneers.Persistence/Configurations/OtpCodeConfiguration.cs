@@ -11,7 +11,9 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
 {
     public void Configure(EntityTypeBuilder<OtpCode> builder)
     {
-        builder.ToTable("OtpCodes");
+        builder.ToTable("OtpCodes", t =>
+            t.HasCheckConstraint("CK_OtpCodes_EmailOrMobile",
+                "([Email] IS NOT NULL) OR ([Mobile] IS NOT NULL)"));
 
         builder.HasKey(o => o.Id);
 
@@ -85,9 +87,5 @@ public class OtpCodeConfiguration : IEntityTypeConfiguration<OtpCode>
 
         builder.HasIndex(o => new { o.Email, o.Purpose, o.ExpiresAt })
             .HasDatabaseName("IX_OtpCodes_Email_Purpose_ExpiresAt");
-
-        // Add computed columns or constraints if needed
-        builder.HasCheckConstraint("CK_OtpCodes_EmailOrMobile", 
-            "([Email] IS NOT NULL) OR ([Mobile] IS NOT NULL)");
     }
 }

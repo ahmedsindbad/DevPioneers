@@ -6,6 +6,7 @@ using DevPioneers.Application.Common.Interfaces;
 using DevPioneers.Infrastructure.Services;
 using DevPioneers.Infrastructure.Services.Payment;
 using DevPioneers.Infrastructure.Services.Auth;
+using DevPioneers.Infrastructure.Services.Cache;
 using DevPioneers.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
+using StackExchange.Redis;
 
 namespace DevPioneers.Infrastructure;
 
@@ -104,7 +106,7 @@ public static class DependencyInjection
                     var env = context.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
                     if (env?.IsDevelopment() == true)
                     {
-                        context.Response.Headers.Add("X-Auth-Error", context.Exception.Message);
+                        context.Response.Headers["X-Auth-Error"] = context.Exception.Message;
                     }
                     
                     return Task.CompletedTask;
@@ -170,10 +172,10 @@ public static class DependencyInjection
         // ============================================
         // Other Infrastructure Services
         // ============================================
-        
+
         // Register DateTime Service
         services.AddScoped<IDateTime, DateTimeService>();
-        
+
         // HTTP Client for Paymob
         services.AddHttpClient("PaymobClient", client =>
         {
@@ -186,14 +188,98 @@ public static class DependencyInjection
         // Register CurrentUserService (real implementation)
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        // Register Email Service (Mock for development, real implementation later)
-        services.AddScoped<IEmailService, MockEmailService>();
+        // ============================================
+        // Redis Cache Service
+        // ============================================
 
-        // Optional: Add OTP Service when implemented
-        // services.AddScoped<IOtpService, OtpService>();
+        // Configure Redis connection
+        var redisConnectionString = configuration.GetValue<string>("RedisSettings:ConnectionString");
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            // Register Redis connection multiplexer as singleton
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var configurationOptions = ConfigurationOptions.Parse(redisConnectionString);
+                configurationOptions.AbortOnConnectFail = false;
+                configurationOptions.ConnectTimeout = 5000;
+                configurationOptions.SyncTimeout = 5000;
+                configurationOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
 
-        // Optional: Add Cache Service when implemented
-        // services.AddScoped<ICacheService, CacheService>();
+                var logger = sp.GetRequiredService<ILogger<ConnectionMultiplexer>>();
+
+                try
+                {
+                    var connection = ConnectionMultiplexer.Connect(configurationOptions);
+
+                    connection.ConnectionFailed += (sender, args) =>
+                    {
+                        logger.LogError("Redis connection failed: {EndPoint} - {FailureType}",
+                            args.EndPoint, args.FailureType);
+                    };
+
+                    connection.ConnectionRestored += (sender, args) =>
+                    {
+                        logger.LogInformation("Redis connection restored: {EndPoint}",
+                            args.EndPoint);
+                    };
+
+                    connection.ErrorMessage += (sender, args) =>
+                    {
+                        logger.LogError("Redis error: {Message}", args.Message);
+                    };
+
+                    logger.LogInformation("Redis connection established successfully");
+                    return connection;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to connect to Redis. Cache service will be unavailable.");
+                    throw;
+                }
+            });
+
+            // Register Redis cache service
+            services.AddScoped<ICacheService, RedisService>();
+        }
+        else
+        {
+            // Redis connection string not configured - cache service will be unavailable
+            // Note: Logger not available at this point in service registration
+        }
+
+        // ============================================
+        // Email Service
+        // ============================================
+
+        // Configure Email settings
+        services.Configure<EmailSettings>(
+            configuration.GetSection(EmailSettings.SectionName));
+
+        // Register Email Service (Use SMTP for production, Mock for development)
+        var emailSettings = configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
+        var environment = services.BuildServiceProvider().GetService<IWebHostEnvironment>();
+
+        if (environment?.IsProduction() == true && emailSettings?.EnableEmailSending == true)
+        {
+            // Use real SMTP email service in production
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else
+        {
+            // Use mock email service in development
+            services.AddScoped<IEmailService, MockEmailService>();
+        }
+
+        // ============================================
+        // OTP Service
+        // ============================================
+
+        // Configure OTP settings
+        services.Configure<OtpSettings>(
+            configuration.GetSection(OtpSettings.SectionName));
+
+        // Register OTP service
+        services.AddScoped<IOtpService, OtpService>();
 
         return services;
     }
