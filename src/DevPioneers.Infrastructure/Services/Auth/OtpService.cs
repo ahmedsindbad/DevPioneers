@@ -77,8 +77,7 @@ public class OtpService : IOtpService
                 ExpiresAt = _dateTime.UtcNow.AddMinutes(_settings.ExpirationMinutes),
                 MaxAttempts = _settings.MaxAttempts,
                 IpAddress = _currentUserService.IpAddress,
-                CreatedBy = _currentUserService.UserId ?? 0,
-                CreatedAt = _dateTime.UtcNow
+                CreatedAtUtc = _dateTime.UtcNow
             };
 
             _context.OtpCodes.Add(otpCode);
@@ -150,7 +149,7 @@ public class OtpService : IOtpService
                 .Where(o => isEmail
                     ? o.Email == identifier
                     : o.Mobile == identifier)
-                .OrderByDescending(o => o.CreatedAt)
+                .OrderByDescending(o => o.CreatedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (otpCode == null)
@@ -243,12 +242,12 @@ public class OtpService : IOtpService
                 .Where(o => isEmail
                     ? o.Email == identifier
                     : o.Mobile == identifier)
-                .OrderByDescending(o => o.CreatedAt)
+                .OrderByDescending(o => o.CreatedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (recentOtp != null)
             {
-                var timeSinceLastOtp = _dateTime.UtcNow - recentOtp.CreatedAt;
+                var timeSinceLastOtp = _dateTime.UtcNow - recentOtp.CreatedAtUtc;
                 var resendDelay = TimeSpan.FromMinutes(_settings.ResendDelayMinutes);
 
                 if (timeSinceLastOtp < resendDelay)

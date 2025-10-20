@@ -262,7 +262,7 @@ public class RedisService : ICacheService
                 await SetAsync(key, item, expiration, cancellationToken);
             }
 
-            return item;
+            return item!;
         }
         catch (Exception ex)
         {

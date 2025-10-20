@@ -106,7 +106,7 @@ public static class DependencyInjection
                     var env = context.HttpContext.RequestServices.GetService<IWebHostEnvironment>();
                     if (env?.IsDevelopment() == true)
                     {
-                        context.Response.Headers.Add("X-Auth-Error", context.Exception.Message);
+                        context.Response.Headers["X-Auth-Error"] = context.Exception.Message;
                     }
                     
                     return Task.CompletedTask;
@@ -243,8 +243,8 @@ public static class DependencyInjection
         }
         else
         {
-            var logger = services.BuildServiceProvider().GetRequiredService<ILogger<DependencyInjection>>();
-            logger.LogWarning("Redis connection string not configured. Cache service will be unavailable.");
+            // Redis connection string not configured - cache service will be unavailable
+            // Note: Logger not available at this point in service registration
         }
 
         // ============================================
