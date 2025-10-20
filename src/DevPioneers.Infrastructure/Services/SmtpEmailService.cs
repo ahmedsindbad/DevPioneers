@@ -32,16 +32,16 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public async Task SendWelcomeEmailAsync(
+    public async Task<bool> SendWelcomeEmailAsync(
         string toEmail,
-        string userName,
+        string fullName,
         CancellationToken cancellationToken = default)
     {
         var subject = "Welcome to DevPioneers!";
         var body = $@"
             <html>
             <body style='font-family: Arial, sans-serif;'>
-                <h2>Welcome to DevPioneers, {userName}!</h2>
+                <h2>Welcome to DevPioneers, {fullName}!</h2>
                 <p>Thank you for joining our community of innovative developers.</p>
                 <p>We're excited to have you on board and look forward to helping you achieve your goals.</p>
                 <p>Get started by exploring our features and setting up your profile.</p>
@@ -50,14 +50,13 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendOtpEmailAsync(
+    public async Task<bool> SendOtpEmailAsync(
         string toEmail,
         string otpCode,
-        int expirationMinutes = 5,
         CancellationToken cancellationToken = default)
     {
         var subject = $"DevPioneers - Verification Code: {otpCode}";
@@ -67,23 +66,23 @@ public class SmtpEmailService : IEmailService
                 <h2>Verification Code</h2>
                 <p>Your DevPioneers verification code is:</p>
                 <h1 style='color: #007bff; letter-spacing: 5px;'>{otpCode}</h1>
-                <p>This code will expire in {expirationMinutes} minutes.</p>
+                <p>This code will expire in 5 minutes.</p>
                 <p>If you didn't request this code, please ignore this email.</p>
                 <br/>
                 <p>Best regards,<br/>The DevPioneers Team</p>
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendPasswordResetEmailAsync(
+    public async Task<bool> SendPasswordResetEmailAsync(
         string toEmail,
         string resetToken,
-        string resetUrl,
         CancellationToken cancellationToken = default)
     {
+        var resetUrl = $"https://devpioneers.com/reset-password?token={resetToken}";
         var subject = "DevPioneers - Password Reset Request";
         var body = $@"
             <html>
@@ -103,15 +102,13 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendSubscriptionConfirmationAsync(
+    public async Task<bool> SendSubscriptionConfirmationAsync(
         string toEmail,
-        string userName,
         string planName,
-        decimal amount,
         DateTime expiryDate,
         CancellationToken cancellationToken = default)
     {
@@ -120,11 +117,9 @@ public class SmtpEmailService : IEmailService
             <html>
             <body style='font-family: Arial, sans-serif;'>
                 <h2>Subscription Confirmed</h2>
-                <p>Hi {userName},</p>
                 <p>Your subscription to <strong>{planName}</strong> has been confirmed!</p>
                 <div style='background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0;'>
                     <p><strong>Plan:</strong> {planName}</p>
-                    <p><strong>Amount:</strong> ${amount:F2}</p>
                     <p><strong>Expires:</strong> {expiryDate:MMMM dd, yyyy}</p>
                 </div>
                 <p>Thank you for choosing DevPioneers!</p>
@@ -133,29 +128,27 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendPaymentReceiptAsync(
+    public async Task<bool> SendPaymentReceiptAsync(
         string toEmail,
-        string userName,
-        string transactionId,
         decimal amount,
-        DateTime paymentDate,
+        string currency,
+        string referenceNumber,
         CancellationToken cancellationToken = default)
     {
-        var subject = $"DevPioneers - Payment Receipt #{transactionId}";
+        var subject = $"DevPioneers - Payment Receipt #{referenceNumber}";
         var body = $@"
             <html>
             <body style='font-family: Arial, sans-serif;'>
                 <h2>Payment Receipt</h2>
-                <p>Hi {userName},</p>
                 <p>Thank you for your payment. Here are the details:</p>
                 <div style='background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0;'>
-                    <p><strong>Transaction ID:</strong> {transactionId}</p>
-                    <p><strong>Amount:</strong> ${amount:F2}</p>
-                    <p><strong>Date:</strong> {paymentDate:MMMM dd, yyyy HH:mm}</p>
+                    <p><strong>Reference Number:</strong> {referenceNumber}</p>
+                    <p><strong>Amount:</strong> {amount:F2} {currency}</p>
+                    <p><strong>Date:</strong> {DateTime.UtcNow:MMMM dd, yyyy HH:mm} UTC</p>
                 </div>
                 <p>Keep this email for your records.</p>
                 <br/>
@@ -163,15 +156,13 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendSubscriptionExpiryReminderAsync(
+    public async Task<bool> SendSubscriptionExpiryReminderAsync(
         string toEmail,
-        string userName,
         string planName,
-        DateTime expiryDate,
         int daysRemaining,
         CancellationToken cancellationToken = default)
     {
@@ -180,10 +171,9 @@ public class SmtpEmailService : IEmailService
             <html>
             <body style='font-family: Arial, sans-serif;'>
                 <h2>Subscription Expiring Soon</h2>
-                <p>Hi {userName},</p>
                 <p>Your <strong>{planName}</strong> subscription will expire in <strong>{daysRemaining} days</strong>.</p>
                 <div style='background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;'>
-                    <p><strong>Expiry Date:</strong> {expiryDate:MMMM dd, yyyy}</p>
+                    <p><strong>Days Remaining:</strong> {daysRemaining}</p>
                 </div>
                 <p>Renew now to continue enjoying all the features of DevPioneers.</p>
                 <a href='https://devpioneers.com/subscriptions' style='display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;'>
@@ -194,13 +184,12 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendWalletTransactionNotificationAsync(
+    public async Task<bool> SendWalletTransactionNotificationAsync(
         string toEmail,
-        string userName,
         string transactionType,
         decimal amount,
         decimal newBalance,
@@ -211,7 +200,6 @@ public class SmtpEmailService : IEmailService
             <html>
             <body style='font-family: Arial, sans-serif;'>
                 <h2>Wallet Transaction</h2>
-                <p>Hi {userName},</p>
                 <p>A transaction has been processed on your wallet:</p>
                 <div style='background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0;'>
                     <p><strong>Type:</strong> {transactionType}</p>
@@ -224,14 +212,15 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendEmailAsync(
+    public async Task<bool> SendEmailAsync(
         string toEmail,
         string subject,
         string body,
+        bool isHtml = false,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(toEmail))
@@ -248,7 +237,7 @@ public class SmtpEmailService : IEmailService
             _logger.LogWarning(
                 "Email sending is disabled. Email to {ToEmail} with subject '{Subject}' was not sent",
                 toEmail, subject);
-            return;
+            return false;
         }
 
         try
@@ -265,7 +254,7 @@ public class SmtpEmailService : IEmailService
                 From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
                 Subject = subject,
                 Body = body,
-                IsBodyHtml = true
+                IsBodyHtml = isHtml
             };
 
             mailMessage.To.Add(toEmail);
@@ -275,61 +264,76 @@ public class SmtpEmailService : IEmailService
             _logger.LogInformation(
                 "Email sent successfully to {ToEmail} with subject '{Subject}'",
                 toEmail, subject);
+
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 "Failed to send email to {ToEmail} with subject '{Subject}'",
                 toEmail, subject);
-            throw;
+            return false;
         }
     }
 
     /// <inheritdoc />
-    public async Task SendBulkEmailsAsync(
+    public async Task<int> SendBulkEmailsAsync(
         List<string> toEmails,
         string subject,
         string body,
+        bool isHtml = false,
         CancellationToken cancellationToken = default)
     {
         if (toEmails == null || !toEmails.Any())
             throw new ArgumentNullException(nameof(toEmails));
 
-        var tasks = toEmails.Select(email =>
-            SendEmailAsync(email, subject, body, cancellationToken));
+        int successCount = 0;
 
-        await Task.WhenAll(tasks);
+        foreach (var email in toEmails)
+        {
+            var success = await SendEmailAsync(email, subject, body, isHtml, cancellationToken);
+            if (success)
+                successCount++;
+        }
 
         _logger.LogInformation(
-            "Bulk email sent to {Count} recipients with subject '{Subject}'",
-            toEmails.Count, subject);
+            "Bulk email sent to {SuccessCount}/{TotalCount} recipients with subject '{Subject}'",
+            successCount, toEmails.Count, subject);
+
+        return successCount;
     }
 
     /// <inheritdoc />
-    public async Task SendEmailVerificationAsync(
+    public async Task<bool> SendEmailVerificationAsync(
         string toEmail,
-        string verificationCode,
+        string fullName,
+        string verificationUrl,
         CancellationToken cancellationToken = default)
     {
-        var subject = $"DevPioneers - Email Verification Code: {verificationCode}";
+        var subject = "DevPioneers - Email Verification";
         var body = $@"
             <html>
             <body style='font-family: Arial, sans-serif;'>
                 <h2>Email Verification</h2>
-                <p>Please verify your email address using the code below:</p>
-                <h1 style='color: #007bff; letter-spacing: 5px;'>{verificationCode}</h1>
-                <p>This code will expire in 5 minutes.</p>
-                <p>If you didn't request this verification, please ignore this email.</p>
+                <p>Hi {fullName},</p>
+                <p>Please verify your email address by clicking the button below:</p>
+                <a href='{verificationUrl}' style='display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;'>
+                    Verify Email
+                </a>
+                <p>Or copy and paste this link into your browser:</p>
+                <p style='color: #666; word-break: break-all;'>{verificationUrl}</p>
+                <p>This link will expire in 24 hours.</p>
+                <p>If you didn't create an account, please ignore this email.</p>
                 <br/>
                 <p>Best regards,<br/>The DevPioneers Team</p>
             </body>
             </html>";
 
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        return await SendEmailAsync(toEmail, subject, body, true, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task SendMobileVerificationOtpAsync(
+    public async Task<bool> SendMobileVerificationOtpAsync(
         string mobileNumber,
         string otpCode,
         CancellationToken cancellationToken = default)
@@ -342,8 +346,15 @@ public class SmtpEmailService : IEmailService
 
         // For now, we'll just log it
         // In production, implement actual SMS sending logic here
+        // Example with Twilio:
+        // await _twilioClient.Messages.CreateAsync(
+        //     body: $"Your DevPioneers verification code is: {otpCode}",
+        //     from: _settings.TwilioPhoneNumber,
+        //     to: mobileNumber
+        // );
 
         await Task.CompletedTask;
+        return true; // Return true for now (mock success)
     }
 
     #region Private Methods

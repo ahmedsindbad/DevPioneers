@@ -87,7 +87,7 @@ public class OtpService : IOtpService
             // Send OTP via appropriate channel
             if (isEmail && _settings.EnableEmailOtp)
             {
-                await _emailService.SendEmailVerificationAsync(
+                await _emailService.SendOtpEmailAsync(
                     identifier,
                     code,
                     cancellationToken);
