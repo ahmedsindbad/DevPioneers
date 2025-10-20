@@ -271,6 +271,57 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ============================================
+// Configure Hangfire Recurring Jobs
+// ============================================
+if (builder.Configuration.GetValue<bool>("FeatureFlags:EnableBackgroundJobs"))
+{
+    var jobLogger = app.Services.GetRequiredService<ILogger<Program>>();
+    jobLogger.LogInformation("Configuring Hangfire recurring jobs...");
+
+    try
+    {
+        // Expire subscriptions - Run every hour
+        Hangfire.RecurringJob.AddOrUpdate<IExpireSubscriptionsJob>(
+            "expire-subscriptions",
+            job => job.ExecuteAsync(default),
+            Cron.Hourly,
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc,
+                QueueName = "normal"
+            });
+
+        // Reconcile payments - Run every 30 minutes
+        Hangfire.RecurringJob.AddOrUpdate<IReconcilePaymentsJob>(
+            "reconcile-payments",
+            job => job.ExecuteAsync(default),
+            "*/30 * * * *", // Every 30 minutes
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc,
+                QueueName = "critical"
+            });
+
+        // Clean old audit trail - Run daily at 2 AM UTC
+        Hangfire.RecurringJob.AddOrUpdate<ICleanOldAuditTrailJob>(
+            "clean-old-audit-trail",
+            job => job.ExecuteAsync(default),
+            Cron.Daily(2), // 2 AM UTC
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc,
+                QueueName = "low"
+            });
+
+        jobLogger.LogInformation("Hangfire recurring jobs configured successfully");
+    }
+    catch (Exception ex)
+    {
+        jobLogger.LogError(ex, "Error configuring Hangfire recurring jobs");
+    }
+}
+
+// ============================================
 // Application Startup Logging
 // ============================================
 var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -278,6 +329,8 @@ startupLogger.LogInformation("DevPioneers API started successfully");
 startupLogger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
 startupLogger.LogInformation("JWT Authentication: Enabled");
 startupLogger.LogInformation("Hangfire Dashboard: /hangfire");
+startupLogger.LogInformation("Background Jobs: {Status}",
+    builder.Configuration.GetValue<bool>("FeatureFlags:EnableBackgroundJobs") ? "Enabled" : "Disabled");
 startupLogger.LogInformation("Swagger UI: /swagger");
 
 // ============================================
