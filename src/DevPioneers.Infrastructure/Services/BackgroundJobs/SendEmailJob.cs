@@ -37,6 +37,8 @@ public class SendEmailJob : ISendEmailJob
         // called directly via Hangfire with specific parameters.
 
         _logger.LogInformation("SendEmailJob completed successfully");
+
+        await Task.CompletedTask;
     }
 
     /// <summary>

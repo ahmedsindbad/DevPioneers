@@ -37,7 +37,7 @@ public class ReconcilePaymentsJob : IReconcilePaymentsJob
             var cutoffTime = DateTime.UtcNow.AddMinutes(-30);
             var paymentsToReconcile = await _context.Payments
                 .Where(p => (p.Status == PaymentStatus.Pending || p.Status == PaymentStatus.Processing) &&
-                           p.CreatedAt < cutoffTime &&
+                           p.CreatedAtUtc < cutoffTime &&
                            !string.IsNullOrEmpty(p.PaymobOrderId))
                 .ToListAsync(cancellationToken);
 
