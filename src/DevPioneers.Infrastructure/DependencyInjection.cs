@@ -7,6 +7,7 @@ using DevPioneers.Infrastructure.Services;
 using DevPioneers.Infrastructure.Services.Payment;
 using DevPioneers.Infrastructure.Services.Auth;
 using DevPioneers.Infrastructure.Services.Cache;
+using DevPioneers.Infrastructure.Services.BackgroundJobs;
 using DevPioneers.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -280,6 +281,16 @@ public static class DependencyInjection
 
         // Register OTP service
         services.AddScoped<IOtpService, OtpService>();
+
+        // ============================================
+        // Background Jobs (Hangfire)
+        // ============================================
+
+        // Register background job services
+        services.AddScoped<IExpireSubscriptionsJob, ExpireSubscriptionsJob>();
+        services.AddScoped<IReconcilePaymentsJob, ReconcilePaymentsJob>();
+        services.AddScoped<ISendEmailJob, SendEmailJob>();
+        services.AddScoped<ICleanOldAuditTrailJob, CleanOldAuditTrailJob>();
 
         return services;
     }
