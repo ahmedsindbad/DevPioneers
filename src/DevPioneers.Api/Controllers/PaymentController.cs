@@ -302,36 +302,26 @@ public class PaymentController : ControllerBase
                 return Unauthorized(ApiResponse.BadRequest("User not authenticated"));
             }
 
-            // Get single payment from history query
-            var query = new GetPaymentHistoryQuery(
+            // Check if user is admin
+            bool isAdmin = _currentUserService.IsInRole("Admin");
+
+            // Use the dedicated GetPaymentByIdQuery
+            var query = new GetPaymentByIdQuery(
+                PaymentId: paymentId,
                 UserId: currentUserId.Value,
-                PageNumber: 1,
-                PageSize: 1
+                IsAdmin: isAdmin
             );
 
             var result = await _mediator.Send(query);
 
-            if (result.IsSuccess && result.Data?.Items.Any() == true)
+            if (!result.IsSuccess)
             {
-                var payment = result.Data.Items.FirstOrDefault(p => p.Id == paymentId);
-                
-                if (payment == null)
-                {
-                    // If admin, try to get payment for any user
-                    if (_currentUserService.IsInRole("Admin"))
-                    {
-                        // This would require a separate query or service method to get payment by ID directly
-                        // For now, return not found
-                        return NotFound(ApiResponse.BadRequest("Payment not found"));
-                    }
-                    
-                    return NotFound(ApiResponse.BadRequest("Payment not found"));
-                }
-
-                return Ok(ApiResponse.Ok(payment, "Payment details retrieved successfully"));
+                _logger.LogWarning("Failed to retrieve payment {PaymentId} for user {UserId}: {Error}",
+                    paymentId, currentUserId.Value, result.Errors);
+                return NotFound(ApiResponse.BadRequest(result.Errors.FirstOrDefault() ?? "Payment not found"));
             }
 
-            return NotFound(ApiResponse.BadRequest("Payment not found"));
+            return Ok(ApiResponse.Ok(result.Data, "Payment details retrieved successfully"));
         }
         catch (Exception ex)
         {
